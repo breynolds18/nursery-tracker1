@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Nursery" />
+  <meta name="theme-color" content="#059669" />
+  <title>Brandon's Nursery Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const App = () => {
+      const getInitialPlants = () => {
+        const saved = localStorage.getItem('nursery-plants');
+        if (saved) return JSON.parse(saved);
+        return [
+          { id: 'M-01', name: 'Pink Princess (2 plants in 1 pot)', variegation: 'pink sectoring / marbling (stable breeder)', source: '', category: 'mother', location: '', rootStatus: 'established', notes: 'Shared pot; main PPP production line', sellable: 'Mother NFS' },
+          { id: 'M-02', name: 'Strawberry Shake', variegation: 'cream/yellow/red/pink variegation', source: 'Mad Variegated Foliage', category: 'mother', location: 'Table / thebasements', rootStatus: 'established', notes: 'Primary Strawberry Shake line. 10 leaves. Mites treated 10/26/25', sellable: 'Mother NFS' },
+          { id: 'M-03', name: 'Caramel Marble (A)', variegation: 'caramel / cream / yellow pattern', source: 'injungles', category: 'mother', location: '', rootStatus: 'recovering', notes: 'Recently chopped; regrowing for future cuts', sellable: 'Mother NFS' },
+          { id: 'M-04', name: 'Caramel Marble (B)', variegation: 'caramel / cream / yellow pattern', source: 'injungles', category: 'mother', location: '', rootStatus: 'recovering', notes: 'Second Caramel Marble line; also just chopped', sellable: 'Mother NFS' },
+          { id: 'C-01', name: 'Orange Princess (A)', variegation: 'yellow/orange/pink/cream', source: '', category: 'candidate', location: '', rootStatus: 'established', notes: 'Established/Growing', sellable: 'Not Yet' },
+          { id: 'C-02', name: 'Orange Princess (B)', variegation: 'yellow/red/green/purple', source: '', category: 'candidate', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'C-03', name: 'Scarlett Princess', variegation: 'green/white/pink/purple', source: '', category: 'candidate', location: '', rootStatus: 'established', notes: 'Established/Growing', sellable: 'Not Yet' },
+          { id: 'C-04', name: 'Green Congo True', variegation: 'green/white/yellow/cream', source: '', category: 'candidate', location: '', rootStatus: 'established', notes: 'Established/Growing', sellable: 'Not Yet' },
+          { id: 'P-01', name: 'Princess of Fire', variegation: '', source: 'Orange Lake Nursery', category: 'active', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-05', name: 'Tortum x Florida Beauty', variegation: 'white/yellow/cream', source: '', category: 'active', location: '', rootStatus: 'established', notes: 'Established/Growing', sellable: 'Not Yet' },
+          { id: 'P-06', name: 'Emerald King', variegation: 'white/yellow/cream', source: "Brady's Plant Exchange", category: 'active', location: 'Top tent', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-09', name: 'Gloriosum (A)', variegation: '', source: '', category: 'active', location: 'Top tent', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-10', name: 'Gloriosum (B)', variegation: '', source: '', category: 'active', location: 'Table', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-11', name: 'Red Anderson', variegation: '', source: '', category: 'active', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-20', name: 'Red Congo (A)', variegation: '', source: '', category: 'active', location: '', rootStatus: 'established', notes: '', sellable: 'Not Yet' },
+          { id: 'P-22', name: 'Yellow Congo (A)', variegation: '', source: '', category: 'active', location: '', rootStatus: 'established', notes: 'Established/Growing', sellable: 'Not Yet' },
+          { id: 'P-25', name: 'Ismaelli', variegation: '', source: '', category: 'active', location: '', rootStatus: 'established', notes: '', sellable: 'Not Yet' },
+          { id: 'P-02', name: 'Emerald Queen (A)', variegation: '', source: '', category: 'rehab', location: 'Table', rootStatus: 'established', notes: '', sellable: 'Not Yet' },
+          { id: 'P-03', name: 'Emerald Queen (B)', variegation: '', source: 'RPF', category: 'rehab', location: '', rootStatus: 'established', notes: 'Established/Growing', sellable: 'Not Yet' },
+          { id: 'P-04a', name: 'Emerald Queen (C)', variegation: '', source: '', category: 'rehab', location: 'Downstairs', rootStatus: 'established', notes: '', sellable: 'Not Yet' },
+          { id: 'P-04b', name: 'Emerald Ice', variegation: 'white/green', source: 'thebasements', category: 'rehab', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-07', name: 'Pink Princess Mutation', variegation: 'pink/black/outer', source: 'thebasements', category: 'rehab', location: 'Bottom tent', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-08', name: 'Princess of Fire', variegation: 'scarlet/orange/purple/red', source: '', category: 'rehab', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-12', name: 'Silver Sword', variegation: '', source: '', category: 'rehab', location: 'Top tent', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-13', name: 'Heartleaf hederaceum (half leaf)', variegation: '', source: '', category: 'rehab', location: 'Mini prop', rootStatus: 'lightly rooted', notes: '', sellable: 'Not Yet' },
+          { id: 'P-15', name: 'Albo/Pink Micans', variegation: '', source: '', category: 'rehab', location: '', rootStatus: 'sprouting', notes: '', sellable: 'Not Yet' },
+          { id: 'P-17', name: 'Caramel Marble Fire Tiger', variegation: '', source: '', category: 'rehab', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-26', name: 'Persimmon Princess', variegation: '', source: '', category: 'rehab', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-27', name: 'Pink Princess Galaxy', variegation: '', source: 'thebasements', category: 'rehab', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-18', name: 'Squamiferum', variegation: '', source: '', category: 'fresh', location: '', rootStatus: 'lightly rooted', notes: '', sellable: 'Not Yet' },
+          { id: 'P-19', name: 'Florida Beauty', variegation: '', source: '', category: 'fresh', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' },
+          { id: 'P-21', name: 'Red Congo (B)', variegation: '', source: '', category: 'fresh', location: '', rootStatus: 'lightly rooted', notes: '', sellable: 'Not Yet' },
+          { id: 'P-23', name: 'Yellow Congo (B)', variegation: '', source: '', category: 'fresh', location: '', rootStatus: 'lightly rooted', notes: '', sellable: 'Not Yet' },
+          { id: 'P-24', name: 'White Princess Aurea', variegation: '', source: '', category: 'fresh', location: '', rootStatus: 'lightly rooted', notes: '', sellable: 'Not Yet' },
+          { id: 'P-28', name: 'Pandiferum', variegation: '', source: 'thebasements', category: 'fresh', location: '', rootStatus: 'lightly rooted', notes: 'Fresh, Active', sellable: 'Not Yet' },
+          { id: 'P-29', name: 'Billietiae', variegation: '', source: 'thebasements', category: 'fresh', location: '', rootStatus: 'lightly rooted', notes: 'Fresh, Active', sellable: 'Not Yet' },
+        ];
+      };
+
+      const getInitialWishlist = () => {
+        const saved = localStorage.getItem('nursery-wishlist');
+        if (saved) return JSON.parse(saved);
+        return [
+          { id: 'W-01', name: 'Brown Beauty', status: 'rehab', notes: 'Cutting in rehab', priceRange: '', source: '' },
+          { id: 'W-02', name: 'Olympiad', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-03', name: 'Yellow Flame', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-04', name: 'Tortum', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-05', name: 'Albo Tortum', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-06', name: 'Melinonii', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-07', name: 'Moonlight', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-08', name: 'Whipple Way', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-09', name: 'Imperial Red', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-10', name: 'Jennifer', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-11', name: 'Albo Billie', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-12', name: 'Orange Melano', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-13', name: 'Golden Dragon', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-14', name: 'Atabapoense Pink', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-15', name: 'Black Cardinal', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-16', name: 'White Wizard Aurea', status: 'rehab', notes: 'Cutting in rehab', priceRange: '', source: '' },
+          { id: 'W-17', name: 'White Knight Aurea', status: 'wanted', notes: '', priceRange: '', source: '' },
+          { id: 'W-18', name: 'White Knight Quad Color (Skittlez)', status: 'wanted', notes: '', priceRange: '', source: '' },
+        ];
+      };
+
+      const [plants, setPlants] = useState(getInitialPlants);
+      const [wishlist, setWishlist] = useState(getInitialWishlist);
+      const [activeTab, setActiveTab] = useState('collection');
+      const [categoryFilter, setCategoryFilter] = useState('all');
+      const [searchTerm, setSearchTerm] = useState('');
+      const [editingId, setEditingId] = useState(null);
+      const [editData, setEditData] = useState({});
+      const [showAddForm, setShowAddForm] = useState(false);
+      const [newPlant, setNewPlant] = useState({ id: '', name: '', variegation: '', source: '', category: 'active', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' });
+      const [showWishlistAddForm, setShowWishlistAddForm] = useState(false);
+      const [newWishlistItem, setNewWishlistItem] = useState({ name: '', status: 'wanted', notes: '', priceRange: '', source: '' });
+      const [editingWishlistId, setEditingWishlistId] = useState(null);
+      const [editWishlistData, setEditWishlistData] = useState({});
+      const [compareSlot1, setCompareSlot1] = useState(null);
+      const [compareSlot2, setCompareSlot2] = useState(null);
+      const [compareSearch, setCompareSearch] = useState('');
+      const [showDataMenu, setShowDataMenu] = useState(false);
+
+      useEffect(() => { localStorage.setItem('nursery-plants', JSON.stringify(plants)); }, [plants]);
+      useEffect(() => { localStorage.setItem('nursery-wishlist', JSON.stringify(wishlist)); }, [wishlist]);
+
+      const categoryConfig = {
+        mother: { label: 'Mother', color: 'bg-amber-100 text-amber-800 border-amber-300', icon: '👑' },
+        candidate: { label: 'Candidate', color: 'bg-violet-100 text-violet-800 border-violet-300', icon: '⭐' },
+        active: { label: 'Active', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: '🌿' },
+        rehab: { label: 'Rehab', color: 'bg-orange-100 text-orange-800 border-orange-300', icon: '🩹' },
+        fresh: { label: 'Fresh', color: 'bg-sky-100 text-sky-800 border-sky-300', icon: '🌱' },
+      };
+
+      const rootStatusConfig = {
+        'established': { label: 'Established', color: 'text-emerald-600' },
+        'recovering': { label: 'Recovering', color: 'text-amber-600' },
+        'lightly rooted': { label: 'Lightly Rooted', color: 'text-sky-600' },
+        'sprouting': { label: 'Sprouting', color: 'text-violet-600' },
+        '': { label: 'Unknown', color: 'text-gray-400' }
+      };
+
+      const wishlistStatusConfig = {
+        wanted: { label: 'Wanted', color: 'bg-emerald-100 text-emerald-800', icon: '🎯' },
+        rehab: { label: 'In Rehab', color: 'bg-amber-100 text-amber-800', icon: '⚠️' },
+        sourcing: { label: 'Sourcing', color: 'bg-blue-100 text-blue-800', icon: '🔍' },
+        ordered: { label: 'Ordered', color: 'bg-violet-100 text-violet-800', icon: '📦' },
+      };
+
+      const getCounts = () => {
+        const counts = { all: plants.length };
+        Object.keys(categoryConfig).forEach(cat => { counts[cat] = plants.filter(p => p.category === cat).length; });
+        return counts;
+      };
+      const counts = getCounts();
+
+      const filteredPlants = plants.filter(p => categoryFilter === 'all' || p.category === categoryFilter).filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.variegation.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase()));
+      const filteredWishlist = wishlist.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      const allPlantsForCompare = [...plants.map(p => ({ ...p, type: 'collection' })), ...wishlist.map(w => ({ ...w, type: 'wishlist' }))].filter(p => p.name.toLowerCase().includes(compareSearch.toLowerCase()));
+
+      const generateNextId = () => { const ids = plants.map(p => { const m = p.id.match(/P-(\d+)/); return m ? parseInt(m[1]) : 0; }); return `P-${String(Math.max(...ids, 0) + 1).padStart(2, '0')}`; };
+      const generateNextWishlistId = () => { const ids = wishlist.map(w => { const m = w.id.match(/W-(\d+)/); return m ? parseInt(m[1]) : 0; }); return `W-${String(Math.max(...ids, 0) + 1).padStart(2, '0')}`; };
+
+      const addPlant = () => { if (newPlant.name.trim()) { setPlants([...plants, { ...newPlant, id: newPlant.id || generateNextId(), name: newPlant.name.trim() }]); setNewPlant({ id: '', name: '', variegation: '', source: '', category: 'active', location: '', rootStatus: '', notes: '', sellable: 'Not Yet' }); setShowAddForm(false); } };
+      const addWishlistItem = () => { if (newWishlistItem.name.trim()) { setWishlist([...wishlist, { ...newWishlistItem, id: generateNextWishlistId(), name: newWishlistItem.name.trim() }]); setNewWishlistItem({ name: '', status: 'wanted', notes: '', priceRange: '', source: '' }); setShowWishlistAddForm(false); } };
+      const saveEdit = () => { setPlants(plants.map(p => p.id === editingId ? { ...editData } : p)); setEditingId(null); };
+      const saveWishlistEdit = () => { setWishlist(wishlist.map(w => w.id === editingWishlistId ? { ...editWishlistData } : w)); setEditingWishlistId(null); };
+      const removePlant = (id) => { setPlants(plants.filter(p => p.id !== id)); };
+      const removeWishlistItem = (id) => { setWishlist(wishlist.filter(w => w.id !== id)); };
+      const moveToCollection = (item) => { setPlants([...plants, { id: generateNextId(), name: item.name, variegation: '', source: item.source || '', category: 'fresh', location: '', rootStatus: 'lightly rooted', notes: item.notes, sellable: 'Not Yet' }]); setWishlist(wishlist.filter(w => w.id !== item.id)); };
+
+      const exportData = () => { const data = { plants, wishlist, exportDate: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `nursery-backup-${new Date().toISOString().split('T')[0]}.json`; a.click(); setShowDataMenu(false); };
+      const importData = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { try { const data = JSON.parse(ev.target.result); if (data.plants) setPlants(data.plants); if (data.wishlist) setWishlist(data.wishlist); alert('Imported!'); } catch { alert('Error importing'); } }; reader.readAsText(file); } setShowDataMenu(false); };
+      const clearAllData = () => { if (window.confirm('Clear ALL data?')) { localStorage.clear(); window.location.reload(); } };
+
+      const motherCount = plants.filter(p => p.category === 'mother').length;
+      const rehabCount = plants.filter(p => p.category === 'rehab').length;
+
+      const CompareCard = ({ plant, slot, onClear }) => {
+        if (!plant) return <div className="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center min-h-48"><p className="text-gray-400">Slot {slot}</p><p className="text-gray-400 text-sm">Select below</p></div>;
+        const isW = plant.type === 'wishlist';
+        return (
+          <div className="flex-1 bg-white rounded-xl shadow-lg p-3 min-h-48">
+            <div className="flex justify-between items-start mb-2">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${isW ? wishlistStatusConfig[plant.status]?.color : categoryConfig[plant.category]?.color}`}>{isW ? wishlistStatusConfig[plant.status]?.label : categoryConfig[plant.category]?.label}</span>
+              <button onClick={onClear} className="text-gray-400 hover:text-red-500">✕</button>
+            </div>
+            <h3 className="font-bold text-lg text-gray-800 mb-2">{plant.name}</h3>
+            <div className="space-y-1 text-sm">
+              {!isW && plant.variegation && <p><span className="text-gray-500">Variegation:</span> {plant.variegation}</p>}
+              {plant.source && <p><span className="text-gray-500">Source:</span> {plant.source}</p>}
+              {!isW && plant.location && <p><span className="text-gray-500">Location:</span> {plant.location}</p>}
+              {!isW && plant.rootStatus && <p><span className="text-gray-500">Roots:</span> {rootStatusConfig[plant.rootStatus]?.label}</p>}
+              {isW && plant.priceRange && <p><span className="text-gray-500">Price:</span> {plant.priceRange}</p>}
+              {plant.notes && <p className="text-gray-500 italic">{plant.notes}</p>}
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-4 pb-20">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-4 relative">
+              <h1 className="text-2xl font-bold text-emerald-900">🌿 Brandon's Nursery</h1>
+              <p className="text-emerald-700 text-sm">{plants.length} plants • {motherCount} mothers • {rehabCount} rehab • {wishlist.length} wishlist</p>
+              <button onClick={() => setShowDataMenu(!showDataMenu)} className="absolute right-0 top-0 p-2 text-gray-500">⚙️</button>
+              {showDataMenu && (
+                <div className="absolute right-0 top-10 bg-white rounded-xl shadow-lg p-2 z-50 min-w-40 text-left">
+                  <button onClick={exportData} className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm">📤 Export</button>
+                  <label className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm cursor-pointer block">📥 Import<input type="file" accept=".json" onChange={importData} className="hidden" /></label>
+                  <hr className="my-1" />
+                  <button onClick={clearAllData} className="w-full text-left px-3 py-2 hover:bg-red-50 rounded text-sm text-red-500">🗑️ Reset</button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 mb-4">
+              {['collection', 'wishlist', 'compare'].map(tab => (
+                <button key={tab} onClick={() => { setActiveTab(tab); setCategoryFilter('all'); setSearchTerm(''); }} className={`flex-1 py-2 px-3 rounded-xl font-semibold text-sm ${activeTab === tab ? 'bg-emerald-600 text-white shadow-lg' : 'bg-white text-emerald-700'}`}>
+                  {tab === 'collection' ? '🏡' : tab === 'wishlist' ? '🎯' : '⚖️'} {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {activeTab === 'compare' && (
+              <div>
+                <div className="flex gap-3 mb-4">
+                  <CompareCard plant={compareSlot1} slot={1} onClear={() => setCompareSlot1(null)} />
+                  <CompareCard plant={compareSlot2} slot={2} onClear={() => setCompareSlot2(null)} />
+                </div>
+                {(compareSlot1 || compareSlot2) && <button onClick={() => { setCompareSlot1(null); setCompareSlot2(null); }} className="w-full mb-4 py-2 bg-white rounded-xl text-red-500 text-sm">Clear Both</button>}
+                <div className="bg-white rounded-xl shadow p-3">
+                  <input type="text" value={compareSearch} onChange={(e) => setCompareSearch(e.target.value)} placeholder="Search..." className="w-full px-3 py-2 border border-gray-200 rounded-lg mb-3 text-sm" />
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {allPlantsForCompare.map(p => (
+                      <div key={`${p.type}-${p.id}`} className={`p-2 rounded-lg border-2 ${compareSlot1?.id === p.id || compareSlot2?.id === p.id ? 'border-emerald-500 bg-emerald-50' : 'border-gray-100'}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${p.type === 'wishlist' ? 'bg-blue-100 text-blue-700' : categoryConfig[p.category]?.color}`}>{p.type === 'wishlist' ? '🎯' : categoryConfig[p.category]?.icon}</span>
+                            <span className="font-medium text-sm">{p.name}</span>
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={() => setCompareSlot1(p)} className={`px-2 py-1 rounded text-xs ${compareSlot1?.id === p.id ? 'bg-emerald-200' : 'bg-gray-100'}`}>{compareSlot1?.id === p.id ? '✓1' : '→1'}</button>
+                            <button onClick={() => setCompareSlot2(p)} className={`px-2 py-1 rounded text-xs ${compareSlot2?.id === p.id ? 'bg-emerald-200' : 'bg-gray-100'}`}>{compareSlot2?.id === p.id ? '✓2' : '→2'}</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'collection' && (
+              <>
+                <div className="bg-white rounded-xl shadow p-2 mb-3">
+                  <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search plants..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                </div>
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {['all', ...Object.keys(categoryConfig)].map(cat => (
+                    <button key={cat} onClick={() => setCategoryFilter(cat)} className={`px-3 py-1 rounded-full text-xs font-medium ${categoryFilter === cat ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-700'}`}>
+                      {cat === 'all' ? `All (${counts.all})` : `${categoryConfig[cat].icon} ${counts[cat]}`}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setShowAddForm(!showAddForm)} className="w-full mb-3 py-2 bg-white rounded-xl text-emerald-600 font-medium text-sm">{showAddForm ? '✕ Cancel' : '+ Add Plant'}</button>
+                {showAddForm && (
+                  <div className="bg-white rounded-xl shadow p-3 mb-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" value={newPlant.name} onChange={(e) => setNewPlant({...newPlant, name: e.target.value})} placeholder="Name *" className="col-span-2 px-3 py-2 border rounded-lg text-sm" />
+                      <input type="text" value={newPlant.variegation} onChange={(e) => setNewPlant({...newPlant, variegation: e.target.value})} placeholder="Variegation" className="px-3 py-2 border rounded-lg text-sm" />
+                      <input type="text" value={newPlant.source} onChange={(e) => setNewPlant({...newPlant, source: e.target.value})} placeholder="Source" className="px-3 py-2 border rounded-lg text-sm" />
+                      <select value={newPlant.category} onChange={(e) => setNewPlant({...newPlant, category: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                        {Object.entries(categoryConfig).map(([k,v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+                      </select>
+                      <input type="text" value={newPlant.location} onChange={(e) => setNewPlant({...newPlant, location: e.target.value})} placeholder="Location" className="px-3 py-2 border rounded-lg text-sm" />
+                      <select value={newPlant.rootStatus} onChange={(e) => setNewPlant({...newPlant, rootStatus: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                        <option value="">Root status...</option>
+                        <option value="established">Established</option>
+                        <option value="recovering">Recovering</option>
+                        <option value="lightly rooted">Lightly Rooted</option>
+                        <option value="sprouting">Sprouting</option>
+                      </select>
+                      <select value={newPlant.sellable} onChange={(e) => setNewPlant({...newPlant, sellable: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                        <option value="Not Yet">Not Yet</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                        <option value="Mother NFS">Mother NFS</option>
+                      </select>
+                      <textarea value={newPlant.notes} onChange={(e) => setNewPlant({...newPlant, notes: e.target.value})} placeholder="Notes" className="col-span-2 px-3 py-2 border rounded-lg text-sm" rows={2} />
+                      <button onClick={addPlant} className="col-span-2 py-2 bg-emerald-600 text-white rounded-lg text-sm">Add</button>
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {filteredPlants.map(plant => (
+                    <div key={plant.id} className="bg-white rounded-xl shadow p-3">
+                      {editingId === plant.id ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="text" value={editData.name} onChange={(e) => setEditData({...editData, name: e.target.value})} className="col-span-2 px-3 py-2 border rounded-lg text-sm font-semibold" />
+                          <input type="text" value={editData.variegation} onChange={(e) => setEditData({...editData, variegation: e.target.value})} placeholder="Variegation" className="px-3 py-2 border rounded-lg text-sm" />
+                          <input type="text" value={editData.source} onChange={(e) => setEditData({...editData, source: e.target.value})} placeholder="Source" className="px-3 py-2 border rounded-lg text-sm" />
+                          <select value={editData.category} onChange={(e) => setEditData({...editData, category: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                            {Object.entries(categoryConfig).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+                          </select>
+                          <input type="text" value={editData.location} onChange={(e) => setEditData({...editData, location: e.target.value})} placeholder="Location" className="px-3 py-2 border rounded-lg text-sm" />
+                          <select value={editData.rootStatus} onChange={(e) => setEditData({...editData, rootStatus: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                            <option value="">Root status...</option>
+                            <option value="established">Established</option>
+                            <option value="recovering">Recovering</option>
+                            <option value="lightly rooted">Lightly Rooted</option>
+                            <option value="sprouting">Sprouting</option>
+                          </select>
+                          <select value={editData.sellable} onChange={(e) => setEditData({...editData, sellable: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                            <option value="Not Yet">Not Yet</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                            <option value="Mother NFS">Mother NFS</option>
+                          </select>
+                          <textarea value={editData.notes} onChange={(e) => setEditData({...editData, notes: e.target.value})} className="col-span-2 px-3 py-2 border rounded-lg text-sm" rows={2} />
+                          <button onClick={saveEdit} className="py-2 bg-emerald-600 text-white rounded-lg text-sm">Save</button>
+                          <button onClick={() => setEditingId(null)} className="py-2 bg-gray-200 rounded-lg text-sm">Cancel</button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="text-xs font-mono text-gray-400">{plant.id}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${categoryConfig[plant.category]?.color}`}>{categoryConfig[plant.category]?.icon} {categoryConfig[plant.category]?.label}</span>
+                            {plant.sellable === 'Mother NFS' && <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">NFS</span>}
+                          </div>
+                          <h3 className="font-semibold text-gray-800">{plant.name}</h3>
+                          {plant.variegation && <p className="text-sm text-emerald-600">{plant.variegation}</p>}
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500">
+                            {plant.source && <span>🏷️ {plant.source}</span>}
+                            {plant.location && <span>📍 {plant.location}</span>}
+                            {plant.rootStatus && <span className={rootStatusConfig[plant.rootStatus]?.color}>🌱 {rootStatusConfig[plant.rootStatus]?.label}</span>}
+                          </div>
+                          {plant.notes && <p className="text-xs text-gray-500 mt-1 italic">{plant.notes}</p>}
+                          <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+                            <button onClick={() => { setEditingId(plant.id); setEditData({...plant}); }} className="px-2 py-1 text-xs text-emerald-600">✏️ Edit</button>
+                            <button onClick={() => { setCompareSlot1({...plant, type: 'collection'}); setActiveTab('compare'); }} className="px-2 py-1 text-xs text-violet-600">⚖️</button>
+                            <button onClick={() => removePlant(plant.id)} className="px-2 py-1 text-xs text-red-500 ml-auto">🗑️</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {filteredPlants.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl">No plants found</div>}
+              </>
+            )}
+
+            {activeTab === 'wishlist' && (
+              <>
+                <div className="bg-white rounded-xl shadow p-2 mb-3">
+                  <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search wishlist..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                </div>
+                <button onClick={() => setShowWishlistAddForm(!showWishlistAddForm)} className="w-full mb-3 py-2 bg-white rounded-xl text-emerald-600 font-medium text-sm">{showWishlistAddForm ? '✕ Cancel' : '+ Add to Wishlist'}</button>
+                {showWishlistAddForm && (
+                  <div className="bg-white rounded-xl shadow p-3 mb-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" value={newWishlistItem.name} onChange={(e) => setNewWishlistItem({...newWishlistItem, name: e.target.value})} placeholder="Name *" className="col-span-2 px-3 py-2 border rounded-lg text-sm" />
+                      <select value={newWishlistItem.status} onChange={(e) => setNewWishlistItem({...newWishlistItem, status: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                        {Object.entries(wishlistStatusConfig).map(([k,v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+                      </select>
+                      <input type="text" value={newWishlistItem.priceRange} onChange={(e) => setNewWishlistItem({...newWishlistItem, priceRange: e.target.value})} placeholder="Price range" className="px-3 py-2 border rounded-lg text-sm" />
+                      <input type="text" value={newWishlistItem.source} onChange={(e) => setNewWishlistItem({...newWishlistItem, source: e.target.value})} placeholder="Source" className="col-span-2 px-3 py-2 border rounded-lg text-sm" />
+                      <textarea value={newWishlistItem.notes} onChange={(e) => setNewWishlistItem({...newWishlistItem, notes: e.target.value})} placeholder="Notes" className="col-span-2 px-3 py-2 border rounded-lg text-sm" rows={2} />
+                      <button onClick={addWishlistItem} className="col-span-2 py-2 bg-emerald-600 text-white rounded-lg text-sm">Add</button>
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {filteredWishlist.map(item => (
+                    <div key={item.id} className="bg-white rounded-xl shadow p-3">
+                      {editingWishlistId === item.id ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="text" value={editWishlistData.name} onChange={(e) => setEditWishlistData({...editWishlistData, name: e.target.value})} className="col-span-2 px-3 py-2 border rounded-lg text-sm font-semibold" />
+                          <select value={editWishlistData.status} onChange={(e) => setEditWishlistData({...editWishlistData, status: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                            {Object.entries(wishlistStatusConfig).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+                          </select>
+                          <input type="text" value={editWishlistData.priceRange || ''} onChange={(e) => setEditWishlistData({...editWishlistData, priceRange: e.target.value})} placeholder="Price" className="px-3 py-2 border rounded-lg text-sm" />
+                          <input type="text" value={editWishlistData.source || ''} onChange={(e) => setEditWishlistData({...editWishlistData, source: e.target.value})} placeholder="Source" className="col-span-2 px-3 py-2 border rounded-lg text-sm" />
+                          <textarea value={editWishlistData.notes || ''} onChange={(e) => setEditWishlistData({...editWishlistData, notes: e.target.value})} className="col-span-2 px-3 py-2 border rounded-lg text-sm" rows={2} />
+                          <button onClick={saveWishlistEdit} className="py-2 bg-emerald-600 text-white rounded-lg text-sm">Save</button>
+                          <button onClick={() => setEditingWishlistId(null)} className="py-2 bg-gray-200 rounded-lg text-sm">Cancel</button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xl">{wishlistStatusConfig[item.status]?.icon}</span>
+                            <span className="text-xs font-mono text-gray-400">{item.id}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${wishlistStatusConfig[item.status]?.color}`}>{wishlistStatusConfig[item.status]?.label}</span>
+                          </div>
+                          <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500">
+                            {item.priceRange && <span>💰 {item.priceRange}</span>}
+                            {item.source && <span>🏷️ {item.source}</span>}
+                          </div>
+                          {item.notes && <p className="text-xs text-gray-500 mt-1 italic">{item.notes}</p>}
+                          <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+                            <button onClick={() => { setEditingWishlistId(item.id); setEditWishlistData({...item}); }} className="px-2 py-1 text-xs text-emerald-600">✏️ Edit</button>
+                            <button onClick={() => { setCompareSlot1({...item, type: 'wishlist'}); setActiveTab('compare'); }} className="px-2 py-1 text-xs text-violet-600">⚖️</button>
+                            <button onClick={() => moveToCollection(item)} className="px-2 py-1 text-xs text-sky-600">🏡 Got it!</button>
+                            <button onClick={() => removeWishlistItem(item.id)} className="px-2 py-1 text-xs text-red-500 ml-auto">🗑️</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {filteredWishlist.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl">No wishlist items</div>}
+              </>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
