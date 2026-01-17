@@ -104,9 +104,13 @@
       const [compareSlot2, setCompareSlot2] = useState(null);
       const [compareSearch, setCompareSearch] = useState('');
       const [showDataMenu, setShowDataMenu] = useState(false);
+      const [darkMode, setDarkMode] = useState(() => localStorage.getItem('nursery-darkMode') === 'true');
+      const [collectionSort, setCollectionSort] = useState('oldest');
+      const [wishlistSort, setWishlistSort] = useState('oldest');
 
       useEffect(() => { localStorage.setItem('nursery-plants', JSON.stringify(plants)); }, [plants]);
       useEffect(() => { localStorage.setItem('nursery-wishlist', JSON.stringify(wishlist)); }, [wishlist]);
+      useEffect(() => { localStorage.setItem('nursery-darkMode', darkMode); }, [darkMode]);
 
       const categoryConfig = {
         mother: { label: 'Mother', color: 'bg-amber-100 text-amber-800 border-amber-300', icon: '👑' },
@@ -138,8 +142,8 @@
       };
       const counts = getCounts();
 
-      const filteredPlants = plants.filter(p => categoryFilter === 'all' || p.category === categoryFilter).filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.variegation.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase()));
-      const filteredWishlist = wishlist.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      const filteredPlants = sortItems(plants.filter(p => categoryFilter === 'all' || p.category === categoryFilter).filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.variegation.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase())), collectionSort);
+      const filteredWishlist = sortItems(wishlist.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())), wishlistSort, true);
       const allPlantsForCompare = [...plants.map(p => ({ ...p, type: 'collection' })), ...wishlist.map(w => ({ ...w, type: 'wishlist' }))].filter(p => p.name.toLowerCase().includes(compareSearch.toLowerCase()));
 
       const generateNextId = () => { const ids = plants.map(p => { const m = p.id.match(/P-(\d+)/); return m ? parseInt(m[1]) : 0; }); return `P-${String(Math.max(...ids, 0) + 1).padStart(2, '0')}`; };
@@ -153,6 +157,32 @@
       const removeWishlistItem = (id) => { setWishlist(wishlist.filter(w => w.id !== id)); };
       const moveToCollection = (item) => { setPlants([...plants, { id: generateNextId(), name: item.name, variegation: '', source: item.source || '', category: 'fresh', location: '', rootStatus: 'lightly rooted', notes: item.notes, sellable: 'Not Yet' }]); setWishlist(wishlist.filter(w => w.id !== item.id)); };
 
+      const toggleStar = (id) => {
+        const item = wishlist.find(w => w.id === id);
+        const starredCount = wishlist.filter(w => w.starred).length;
+        if (item.starred) {
+          setWishlist(wishlist.map(w => w.id === id ? { ...w, starred: false } : w));
+        } else if (starredCount < 3) {
+          setWishlist(wishlist.map(w => w.id === id ? { ...w, starred: true } : w));
+        }
+      };
+
+      const sortItems = (items, sortType, isWishlist = false) => {
+        const sorted = [...items];
+        if (sortType === 'alphabetical') {
+          sorted.sort((a, b) => a.name.localeCompare(b.name));
+        } else if (sortType === 'newest') {
+          sorted.reverse();
+        }
+        // For wishlist, always pin starred items to the top
+        if (isWishlist) {
+          sorted.sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
+        }
+        return sorted;
+      };
+
+      const starredCount = wishlist.filter(w => w.starred).length;
+
       const exportData = () => { const data = { plants, wishlist, exportDate: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `nursery-backup-${new Date().toISOString().split('T')[0]}.json`; a.click(); setShowDataMenu(false); };
       const importData = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { try { const data = JSON.parse(ev.target.result); if (data.plants) setPlants(data.plants); if (data.wishlist) setWishlist(data.wishlist); alert('Imported!'); } catch { alert('Error importing'); } }; reader.readAsText(file); } setShowDataMenu(false); };
       const clearAllData = () => { if (window.confirm('Clear ALL data?')) { localStorage.clear(); window.location.reload(); } };
@@ -161,47 +191,49 @@
       const rehabCount = plants.filter(p => p.category === 'rehab').length;
 
       const CompareCard = ({ plant, slot, onClear }) => {
-        if (!plant) return <div className="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center min-h-48"><p className="text-gray-400">Slot {slot}</p><p className="text-gray-400 text-sm">Select below</p></div>;
+        if (!plant) return <div className={`flex-1 rounded-xl border-2 border-dashed p-6 flex flex-col items-center justify-center min-h-48 ${darkMode ? 'bg-gray-800 border-gray-600' : 'bg-gray-50 border-gray-300'}`}><p className={darkMode ? 'text-gray-500' : 'text-gray-400'}>Slot {slot}</p><p className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Select below</p></div>;
         const isW = plant.type === 'wishlist';
         return (
-          <div className="flex-1 bg-white rounded-xl shadow-lg p-3 min-h-48">
+          <div className={`flex-1 rounded-xl shadow-lg p-3 min-h-48 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
             <div className="flex justify-between items-start mb-2">
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${isW ? wishlistStatusConfig[plant.status]?.color : categoryConfig[plant.category]?.color}`}>{isW ? wishlistStatusConfig[plant.status]?.label : categoryConfig[plant.category]?.label}</span>
-              <button onClick={onClear} className="text-gray-400 hover:text-red-500">✕</button>
+              <button onClick={onClear} className={`hover:text-red-500 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>✕</button>
             </div>
-            <h3 className="font-bold text-lg text-gray-800 mb-2">{plant.name}</h3>
-            <div className="space-y-1 text-sm">
-              {!isW && plant.variegation && <p><span className="text-gray-500">Variegation:</span> {plant.variegation}</p>}
-              {plant.source && <p><span className="text-gray-500">Source:</span> {plant.source}</p>}
-              {!isW && plant.location && <p><span className="text-gray-500">Location:</span> {plant.location}</p>}
-              {!isW && plant.rootStatus && <p><span className="text-gray-500">Roots:</span> {rootStatusConfig[plant.rootStatus]?.label}</p>}
-              {isW && plant.priceRange && <p><span className="text-gray-500">Price:</span> {plant.priceRange}</p>}
-              {plant.notes && <p className="text-gray-500 italic">{plant.notes}</p>}
+            <h3 className={`font-bold text-lg mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>{plant.name}</h3>
+            <div className={`space-y-1 text-sm ${darkMode ? 'text-gray-300' : ''}`}>
+              {!isW && plant.variegation && <p><span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Variegation:</span> {plant.variegation}</p>}
+              {plant.source && <p><span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Source:</span> {plant.source}</p>}
+              {!isW && plant.location && <p><span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Location:</span> {plant.location}</p>}
+              {!isW && plant.rootStatus && <p><span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Roots:</span> {rootStatusConfig[plant.rootStatus]?.label}</p>}
+              {isW && plant.priceRange && <p><span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Price:</span> {plant.priceRange}</p>}
+              {plant.notes && <p className={`italic ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{plant.notes}</p>}
             </div>
           </div>
         );
       };
 
       return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-4 pb-20">
+        <div className={`min-h-screen p-4 pb-20 ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-green-50 to-emerald-100'}`}>
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-4 relative">
-              <h1 className="text-2xl font-bold text-emerald-900">🌿 Brandon's Nursery</h1>
-              <p className="text-emerald-700 text-sm">{plants.length} plants • {motherCount} mothers • {rehabCount} rehab • {wishlist.length} wishlist</p>
-              <button onClick={() => setShowDataMenu(!showDataMenu)} className="absolute right-0 top-0 p-2 text-gray-500">⚙️</button>
+              <h1 className={`text-2xl font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-900'}`}>🌿 Brandon's Nursery</h1>
+              <p className={`text-sm ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>{plants.length} plants • {motherCount} mothers • {rehabCount} rehab • {wishlist.length} wishlist</p>
+              <button onClick={() => setShowDataMenu(!showDataMenu)} className={`absolute right-0 top-0 p-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>⚙️</button>
               {showDataMenu && (
-                <div className="absolute right-0 top-10 bg-white rounded-xl shadow-lg p-2 z-50 min-w-40 text-left">
-                  <button onClick={exportData} className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm">📤 Export</button>
-                  <label className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm cursor-pointer block">📥 Import<input type="file" accept=".json" onChange={importData} className="hidden" /></label>
-                  <hr className="my-1" />
-                  <button onClick={clearAllData} className="w-full text-left px-3 py-2 hover:bg-red-50 rounded text-sm text-red-500">🗑️ Reset</button>
+                <div className={`absolute right-0 top-10 rounded-xl shadow-lg p-2 z-50 min-w-40 text-left ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <button onClick={() => setDarkMode(!darkMode)} className={`w-full text-left px-3 py-2 rounded text-sm ${darkMode ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-100'}`}>{darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}</button>
+                  <hr className={`my-1 ${darkMode ? 'border-gray-700' : ''}`} />
+                  <button onClick={exportData} className={`w-full text-left px-3 py-2 rounded text-sm ${darkMode ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-100'}`}>📤 Export</button>
+                  <label className={`w-full text-left px-3 py-2 rounded text-sm cursor-pointer block ${darkMode ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-100'}`}>📥 Import<input type="file" accept=".json" onChange={importData} className="hidden" /></label>
+                  <hr className={`my-1 ${darkMode ? 'border-gray-700' : ''}`} />
+                  <button onClick={clearAllData} className={`w-full text-left px-3 py-2 rounded text-sm text-red-500 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-red-50'}`}>🗑️ Reset</button>
                 </div>
               )}
             </div>
 
             <div className="flex gap-2 mb-4">
               {['collection', 'wishlist', 'compare'].map(tab => (
-                <button key={tab} onClick={() => { setActiveTab(tab); setCategoryFilter('all'); setSearchTerm(''); }} className={`flex-1 py-2 px-3 rounded-xl font-semibold text-sm ${activeTab === tab ? 'bg-emerald-600 text-white shadow-lg' : 'bg-white text-emerald-700'}`}>
+                <button key={tab} onClick={() => { setActiveTab(tab); setCategoryFilter('all'); setSearchTerm(''); }} className={`flex-1 py-2 px-3 rounded-xl font-semibold text-sm ${activeTab === tab ? 'bg-emerald-600 text-white shadow-lg' : darkMode ? 'bg-gray-800 text-emerald-400' : 'bg-white text-emerald-700'}`}>
                   {tab === 'collection' ? '🏡' : tab === 'wishlist' ? '🎯' : '⚖️'} {tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ))}
@@ -213,20 +245,20 @@
                   <CompareCard plant={compareSlot1} slot={1} onClear={() => setCompareSlot1(null)} />
                   <CompareCard plant={compareSlot2} slot={2} onClear={() => setCompareSlot2(null)} />
                 </div>
-                {(compareSlot1 || compareSlot2) && <button onClick={() => { setCompareSlot1(null); setCompareSlot2(null); }} className="w-full mb-4 py-2 bg-white rounded-xl text-red-500 text-sm">Clear Both</button>}
-                <div className="bg-white rounded-xl shadow p-3">
-                  <input type="text" value={compareSearch} onChange={(e) => setCompareSearch(e.target.value)} placeholder="Search..." className="w-full px-3 py-2 border border-gray-200 rounded-lg mb-3 text-sm" />
+                {(compareSlot1 || compareSlot2) && <button onClick={() => { setCompareSlot1(null); setCompareSlot2(null); }} className={`w-full mb-4 py-2 rounded-xl text-red-500 text-sm ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>Clear Both</button>}
+                <div className={`rounded-xl shadow p-3 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <input type="text" value={compareSearch} onChange={(e) => setCompareSearch(e.target.value)} placeholder="Search..." className={`w-full px-3 py-2 border rounded-lg mb-3 text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : 'border-gray-200'}`} />
                   <div className="max-h-64 overflow-y-auto space-y-2">
                     {allPlantsForCompare.map(p => (
-                      <div key={`${p.type}-${p.id}`} className={`p-2 rounded-lg border-2 ${compareSlot1?.id === p.id || compareSlot2?.id === p.id ? 'border-emerald-500 bg-emerald-50' : 'border-gray-100'}`}>
+                      <div key={`${p.type}-${p.id}`} className={`p-2 rounded-lg border-2 ${compareSlot1?.id === p.id || compareSlot2?.id === p.id ? 'border-emerald-500 bg-emerald-50' : darkMode ? 'border-gray-700 bg-gray-700' : 'border-gray-100'}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className={`px-2 py-0.5 rounded-full text-xs ${p.type === 'wishlist' ? 'bg-blue-100 text-blue-700' : categoryConfig[p.category]?.color}`}>{p.type === 'wishlist' ? '🎯' : categoryConfig[p.category]?.icon}</span>
-                            <span className="font-medium text-sm">{p.name}</span>
+                            <span className={`font-medium text-sm ${darkMode && !(compareSlot1?.id === p.id || compareSlot2?.id === p.id) ? 'text-gray-200' : ''}`}>{p.name}</span>
                           </div>
                           <div className="flex gap-1">
-                            <button onClick={() => setCompareSlot1(p)} className={`px-2 py-1 rounded text-xs ${compareSlot1?.id === p.id ? 'bg-emerald-200' : 'bg-gray-100'}`}>{compareSlot1?.id === p.id ? '✓1' : '→1'}</button>
-                            <button onClick={() => setCompareSlot2(p)} className={`px-2 py-1 rounded text-xs ${compareSlot2?.id === p.id ? 'bg-emerald-200' : 'bg-gray-100'}`}>{compareSlot2?.id === p.id ? '✓2' : '→2'}</button>
+                            <button onClick={() => setCompareSlot1(p)} className={`px-2 py-1 rounded text-xs ${compareSlot1?.id === p.id ? 'bg-emerald-200' : darkMode ? 'bg-gray-600 text-gray-200' : 'bg-gray-100'}`}>{compareSlot1?.id === p.id ? '✓1' : '→1'}</button>
+                            <button onClick={() => setCompareSlot2(p)} className={`px-2 py-1 rounded text-xs ${compareSlot2?.id === p.id ? 'bg-emerald-200' : darkMode ? 'bg-gray-600 text-gray-200' : 'bg-gray-100'}`}>{compareSlot2?.id === p.id ? '✓2' : '→2'}</button>
                           </div>
                         </div>
                       </div>
@@ -238,90 +270,97 @@
 
             {activeTab === 'collection' && (
               <>
-                <div className="bg-white rounded-xl shadow p-2 mb-3">
-                  <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search plants..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                <div className={`rounded-xl shadow p-2 mb-3 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <div className="flex gap-2">
+                    <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search plants..." className={`flex-1 px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : 'border-gray-200'}`} />
+                    <select value={collectionSort} onChange={(e) => setCollectionSort(e.target.value)} className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : 'border-gray-200'}`}>
+                      <option value="oldest">Oldest</option>
+                      <option value="newest">Newest</option>
+                      <option value="alphabetical">A-Z</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1 mb-3">
                   {['all', ...Object.keys(categoryConfig)].map(cat => (
-                    <button key={cat} onClick={() => setCategoryFilter(cat)} className={`px-3 py-1 rounded-full text-xs font-medium ${categoryFilter === cat ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-700'}`}>
+                    <button key={cat} onClick={() => setCategoryFilter(cat)} className={`px-3 py-1 rounded-full text-xs font-medium ${categoryFilter === cat ? 'bg-emerald-600 text-white' : darkMode ? 'bg-gray-800 text-emerald-400' : 'bg-white text-emerald-700'}`}>
                       {cat === 'all' ? `All (${counts.all})` : `${categoryConfig[cat].icon} ${counts[cat]}`}
                     </button>
                   ))}
                 </div>
-                <button onClick={() => setShowAddForm(!showAddForm)} className="w-full mb-3 py-2 bg-white rounded-xl text-emerald-600 font-medium text-sm">{showAddForm ? '✕ Cancel' : '+ Add Plant'}</button>
+                <button onClick={() => setShowAddForm(!showAddForm)} className={`w-full mb-3 py-2 rounded-xl font-medium text-sm ${darkMode ? 'bg-gray-800 text-emerald-400' : 'bg-white text-emerald-600'}`}>{showAddForm ? '✕ Cancel' : '+ Add Plant'}</button>
                 {showAddForm && (
-                  <div className="bg-white rounded-xl shadow p-3 mb-3">
+                  <div className={`rounded-xl shadow p-3 mb-3 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                     <div className="grid grid-cols-2 gap-2">
-                      <input type="text" value={newPlant.name} onChange={(e) => setNewPlant({...newPlant, name: e.target.value})} placeholder="Name *" className="col-span-2 px-3 py-2 border rounded-lg text-sm" />
-                      <input type="text" value={newPlant.variegation} onChange={(e) => setNewPlant({...newPlant, variegation: e.target.value})} placeholder="Variegation" className="px-3 py-2 border rounded-lg text-sm" />
-                      <input type="text" value={newPlant.source} onChange={(e) => setNewPlant({...newPlant, source: e.target.value})} placeholder="Source" className="px-3 py-2 border rounded-lg text-sm" />
-                      <select value={newPlant.category} onChange={(e) => setNewPlant({...newPlant, category: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                      <input type="text" value={newPlant.name} onChange={(e) => setNewPlant({...newPlant, name: e.target.value})} placeholder="Name *" className={`col-span-2 px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                      <input type="text" value={newPlant.variegation} onChange={(e) => setNewPlant({...newPlant, variegation: e.target.value})} placeholder="Variegation" className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                      <input type="text" value={newPlant.source} onChange={(e) => setNewPlant({...newPlant, source: e.target.value})} placeholder="Source" className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                      <select value={newPlant.category} onChange={(e) => setNewPlant({...newPlant, category: e.target.value})} className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : ''}`}>
                         {Object.entries(categoryConfig).map(([k,v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
                       </select>
-                      <input type="text" value={newPlant.location} onChange={(e) => setNewPlant({...newPlant, location: e.target.value})} placeholder="Location" className="px-3 py-2 border rounded-lg text-sm" />
-                      <select value={newPlant.rootStatus} onChange={(e) => setNewPlant({...newPlant, rootStatus: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                      <input type="text" value={newPlant.location} onChange={(e) => setNewPlant({...newPlant, location: e.target.value})} placeholder="Location" className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                      <select value={newPlant.rootStatus} onChange={(e) => setNewPlant({...newPlant, rootStatus: e.target.value})} className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : ''}`}>
                         <option value="">Root status...</option>
                         <option value="established">Established</option>
                         <option value="recovering">Recovering</option>
                         <option value="lightly rooted">Lightly Rooted</option>
                         <option value="sprouting">Sprouting</option>
                       </select>
-                      <select value={newPlant.sellable} onChange={(e) => setNewPlant({...newPlant, sellable: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                      <select value={newPlant.sellable} onChange={(e) => setNewPlant({...newPlant, sellable: e.target.value})} className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : ''}`}>
                         <option value="Not Yet">Not Yet</option>
                         <option value="Yes">Yes</option>
                         <option value="No">No</option>
                         <option value="Mother NFS">Mother NFS</option>
                       </select>
-                      <textarea value={newPlant.notes} onChange={(e) => setNewPlant({...newPlant, notes: e.target.value})} placeholder="Notes" className="col-span-2 px-3 py-2 border rounded-lg text-sm" rows={2} />
+                      <textarea value={newPlant.notes} onChange={(e) => setNewPlant({...newPlant, notes: e.target.value})} placeholder="Notes" className={`col-span-2 px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} rows={2} />
                       <button onClick={addPlant} className="col-span-2 py-2 bg-emerald-600 text-white rounded-lg text-sm">Add</button>
                     </div>
                   </div>
                 )}
                 <div className="space-y-2">
                   {filteredPlants.map(plant => (
-                    <div key={plant.id} className="bg-white rounded-xl shadow p-3">
+                    <div key={plant.id} className={`rounded-xl shadow p-3 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                       {editingId === plant.id ? (
                         <div className="grid grid-cols-2 gap-2">
-                          <input type="text" value={editData.name} onChange={(e) => setEditData({...editData, name: e.target.value})} className="col-span-2 px-3 py-2 border rounded-lg text-sm font-semibold" />
-                          <input type="text" value={editData.variegation} onChange={(e) => setEditData({...editData, variegation: e.target.value})} placeholder="Variegation" className="px-3 py-2 border rounded-lg text-sm" />
-                          <input type="text" value={editData.source} onChange={(e) => setEditData({...editData, source: e.target.value})} placeholder="Source" className="px-3 py-2 border rounded-lg text-sm" />
-                          <select value={editData.category} onChange={(e) => setEditData({...editData, category: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                          <input type="text" value={editData.name} onChange={(e) => setEditData({...editData, name: e.target.value})} className={`col-span-2 px-3 py-2 border rounded-lg text-sm font-semibold ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : ''}`} />
+                          <input type="text" value={editData.variegation} onChange={(e) => setEditData({...editData, variegation: e.target.value})} placeholder="Variegation" className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                          <input type="text" value={editData.source} onChange={(e) => setEditData({...editData, source: e.target.value})} placeholder="Source" className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                          <select value={editData.category} onChange={(e) => setEditData({...editData, category: e.target.value})} className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : ''}`}>
                             {Object.entries(categoryConfig).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
                           </select>
-                          <input type="text" value={editData.location} onChange={(e) => setEditData({...editData, location: e.target.value})} placeholder="Location" className="px-3 py-2 border rounded-lg text-sm" />
-                          <select value={editData.rootStatus} onChange={(e) => setEditData({...editData, rootStatus: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                          <input type="text" value={editData.location} onChange={(e) => setEditData({...editData, location: e.target.value})} placeholder="Location" className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                          <select value={editData.rootStatus} onChange={(e) => setEditData({...editData, rootStatus: e.target.value})} className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : ''}`}>
                             <option value="">Root status...</option>
                             <option value="established">Established</option>
                             <option value="recovering">Recovering</option>
                             <option value="lightly rooted">Lightly Rooted</option>
                             <option value="sprouting">Sprouting</option>
                           </select>
-                          <select value={editData.sellable} onChange={(e) => setEditData({...editData, sellable: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                          <select value={editData.sellable} onChange={(e) => setEditData({...editData, sellable: e.target.value})} className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : ''}`}>
                             <option value="Not Yet">Not Yet</option>
                             <option value="Yes">Yes</option>
                             <option value="No">No</option>
                             <option value="Mother NFS">Mother NFS</option>
                           </select>
-                          <textarea value={editData.notes} onChange={(e) => setEditData({...editData, notes: e.target.value})} className="col-span-2 px-3 py-2 border rounded-lg text-sm" rows={2} />
+                          <textarea value={editData.notes} onChange={(e) => setEditData({...editData, notes: e.target.value})} className={`col-span-2 px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} rows={2} />
                           <button onClick={saveEdit} className="py-2 bg-emerald-600 text-white rounded-lg text-sm">Save</button>
-                          <button onClick={() => setEditingId(null)} className="py-2 bg-gray-200 rounded-lg text-sm">Cancel</button>
+                          <button onClick={() => setEditingId(null)} className={`py-2 rounded-lg text-sm ${darkMode ? 'bg-gray-600 text-gray-200' : 'bg-gray-200'}`}>Cancel</button>
                         </div>
                       ) : (
                         <>
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="text-xs font-mono text-gray-400">{plant.id}</span>
+                            <span className={`text-xs font-mono ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{plant.id}</span>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${categoryConfig[plant.category]?.color}`}>{categoryConfig[plant.category]?.icon} {categoryConfig[plant.category]?.label}</span>
                             {plant.sellable === 'Mother NFS' && <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">NFS</span>}
                           </div>
-                          <h3 className="font-semibold text-gray-800">{plant.name}</h3>
-                          {plant.variegation && <p className="text-sm text-emerald-600">{plant.variegation}</p>}
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500">
+                          <h3 className={`font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>{plant.name}</h3>
+                          {plant.variegation && <p className={`text-sm ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{plant.variegation}</p>}
+                          <div className={`flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                             {plant.source && <span>🏷️ {plant.source}</span>}
                             {plant.location && <span>📍 {plant.location}</span>}
                             {plant.rootStatus && <span className={rootStatusConfig[plant.rootStatus]?.color}>🌱 {rootStatusConfig[plant.rootStatus]?.label}</span>}
                           </div>
-                          {plant.notes && <p className="text-xs text-gray-500 mt-1 italic">{plant.notes}</p>}
-                          <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+                          {plant.notes && <p className={`text-xs mt-1 italic ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{plant.notes}</p>}
+                          <div className={`flex gap-2 mt-2 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
                             <button onClick={() => { setEditingId(plant.id); setEditData({...plant}); }} className="px-2 py-1 text-xs text-emerald-600">✏️ Edit</button>
                             <button onClick={() => { setCompareSlot1({...plant, type: 'collection'}); setActiveTab('compare'); }} className="px-2 py-1 text-xs text-violet-600">⚖️</button>
                             <button onClick={() => removePlant(plant.id)} className="px-2 py-1 text-xs text-red-500 ml-auto">🗑️</button>
@@ -331,59 +370,72 @@
                     </div>
                   ))}
                 </div>
-                {filteredPlants.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl">No plants found</div>}
+                {filteredPlants.length === 0 && <div className={`text-center py-8 rounded-xl ${darkMode ? 'text-gray-400 bg-gray-800' : 'text-gray-500 bg-white'}`}>No plants found</div>}
               </>
             )}
 
             {activeTab === 'wishlist' && (
               <>
-                <div className="bg-white rounded-xl shadow p-2 mb-3">
-                  <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search wishlist..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                <div className={`rounded-xl shadow p-2 mb-3 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <div className="flex gap-2">
+                    <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search wishlist..." className={`flex-1 px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : 'border-gray-200'}`} />
+                    <select value={wishlistSort} onChange={(e) => setWishlistSort(e.target.value)} className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : 'border-gray-200'}`}>
+                      <option value="oldest">Oldest</option>
+                      <option value="newest">Newest</option>
+                      <option value="alphabetical">A-Z</option>
+                    </select>
+                  </div>
                 </div>
-                <button onClick={() => setShowWishlistAddForm(!showWishlistAddForm)} className="w-full mb-3 py-2 bg-white rounded-xl text-emerald-600 font-medium text-sm">{showWishlistAddForm ? '✕ Cancel' : '+ Add to Wishlist'}</button>
+                <div className={`flex items-center justify-between mb-3 px-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <span>⭐ {starredCount}/3 pinned</span>
+                </div>
+                <button onClick={() => setShowWishlistAddForm(!showWishlistAddForm)} className={`w-full mb-3 py-2 rounded-xl font-medium text-sm ${darkMode ? 'bg-gray-800 text-emerald-400' : 'bg-white text-emerald-600'}`}>{showWishlistAddForm ? '✕ Cancel' : '+ Add to Wishlist'}</button>
                 {showWishlistAddForm && (
-                  <div className="bg-white rounded-xl shadow p-3 mb-3">
+                  <div className={`rounded-xl shadow p-3 mb-3 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                     <div className="grid grid-cols-2 gap-2">
-                      <input type="text" value={newWishlistItem.name} onChange={(e) => setNewWishlistItem({...newWishlistItem, name: e.target.value})} placeholder="Name *" className="col-span-2 px-3 py-2 border rounded-lg text-sm" />
-                      <select value={newWishlistItem.status} onChange={(e) => setNewWishlistItem({...newWishlistItem, status: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                      <input type="text" value={newWishlistItem.name} onChange={(e) => setNewWishlistItem({...newWishlistItem, name: e.target.value})} placeholder="Name *" className={`col-span-2 px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                      <select value={newWishlistItem.status} onChange={(e) => setNewWishlistItem({...newWishlistItem, status: e.target.value})} className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : ''}`}>
                         {Object.entries(wishlistStatusConfig).map(([k,v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
                       </select>
-                      <input type="text" value={newWishlistItem.priceRange} onChange={(e) => setNewWishlistItem({...newWishlistItem, priceRange: e.target.value})} placeholder="Price range" className="px-3 py-2 border rounded-lg text-sm" />
-                      <input type="text" value={newWishlistItem.source} onChange={(e) => setNewWishlistItem({...newWishlistItem, source: e.target.value})} placeholder="Source" className="col-span-2 px-3 py-2 border rounded-lg text-sm" />
-                      <textarea value={newWishlistItem.notes} onChange={(e) => setNewWishlistItem({...newWishlistItem, notes: e.target.value})} placeholder="Notes" className="col-span-2 px-3 py-2 border rounded-lg text-sm" rows={2} />
+                      <input type="text" value={newWishlistItem.priceRange} onChange={(e) => setNewWishlistItem({...newWishlistItem, priceRange: e.target.value})} placeholder="Price range" className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                      <input type="text" value={newWishlistItem.source} onChange={(e) => setNewWishlistItem({...newWishlistItem, source: e.target.value})} placeholder="Source" className={`col-span-2 px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                      <textarea value={newWishlistItem.notes} onChange={(e) => setNewWishlistItem({...newWishlistItem, notes: e.target.value})} placeholder="Notes" className={`col-span-2 px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} rows={2} />
                       <button onClick={addWishlistItem} className="col-span-2 py-2 bg-emerald-600 text-white rounded-lg text-sm">Add</button>
                     </div>
                   </div>
                 )}
                 <div className="space-y-2">
                   {filteredWishlist.map(item => (
-                    <div key={item.id} className="bg-white rounded-xl shadow p-3">
+                    <div key={item.id} className={`rounded-xl shadow p-3 ${item.starred ? (darkMode ? 'bg-yellow-900/30 border-2 border-yellow-600' : 'bg-yellow-50 border-2 border-yellow-300') : (darkMode ? 'bg-gray-800' : 'bg-white')}`}>
                       {editingWishlistId === item.id ? (
                         <div className="grid grid-cols-2 gap-2">
-                          <input type="text" value={editWishlistData.name} onChange={(e) => setEditWishlistData({...editWishlistData, name: e.target.value})} className="col-span-2 px-3 py-2 border rounded-lg text-sm font-semibold" />
-                          <select value={editWishlistData.status} onChange={(e) => setEditWishlistData({...editWishlistData, status: e.target.value})} className="px-3 py-2 border rounded-lg text-sm">
+                          <input type="text" value={editWishlistData.name} onChange={(e) => setEditWishlistData({...editWishlistData, name: e.target.value})} className={`col-span-2 px-3 py-2 border rounded-lg text-sm font-semibold ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : ''}`} />
+                          <select value={editWishlistData.status} onChange={(e) => setEditWishlistData({...editWishlistData, status: e.target.value})} className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : ''}`}>
                             {Object.entries(wishlistStatusConfig).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
                           </select>
-                          <input type="text" value={editWishlistData.priceRange || ''} onChange={(e) => setEditWishlistData({...editWishlistData, priceRange: e.target.value})} placeholder="Price" className="px-3 py-2 border rounded-lg text-sm" />
-                          <input type="text" value={editWishlistData.source || ''} onChange={(e) => setEditWishlistData({...editWishlistData, source: e.target.value})} placeholder="Source" className="col-span-2 px-3 py-2 border rounded-lg text-sm" />
-                          <textarea value={editWishlistData.notes || ''} onChange={(e) => setEditWishlistData({...editWishlistData, notes: e.target.value})} className="col-span-2 px-3 py-2 border rounded-lg text-sm" rows={2} />
+                          <input type="text" value={editWishlistData.priceRange || ''} onChange={(e) => setEditWishlistData({...editWishlistData, priceRange: e.target.value})} placeholder="Price" className={`px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                          <input type="text" value={editWishlistData.source || ''} onChange={(e) => setEditWishlistData({...editWishlistData, source: e.target.value})} placeholder="Source" className={`col-span-2 px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} />
+                          <textarea value={editWishlistData.notes || ''} onChange={(e) => setEditWishlistData({...editWishlistData, notes: e.target.value})} className={`col-span-2 px-3 py-2 border rounded-lg text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400' : ''}`} rows={2} />
                           <button onClick={saveWishlistEdit} className="py-2 bg-emerald-600 text-white rounded-lg text-sm">Save</button>
-                          <button onClick={() => setEditingWishlistId(null)} className="py-2 bg-gray-200 rounded-lg text-sm">Cancel</button>
+                          <button onClick={() => setEditingWishlistId(null)} className={`py-2 rounded-lg text-sm ${darkMode ? 'bg-gray-600 text-gray-200' : 'bg-gray-200'}`}>Cancel</button>
                         </div>
                       ) : (
                         <>
                           <div className="flex items-center gap-2 mb-1">
+                            <button onClick={() => toggleStar(item.id)} className={`text-xl transition-transform hover:scale-110 ${item.starred ? 'text-yellow-500' : (starredCount >= 3 ? 'text-gray-300 cursor-not-allowed' : (darkMode ? 'text-gray-600 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-500'))}`} disabled={!item.starred && starredCount >= 3} title={item.starred ? 'Unpin' : (starredCount >= 3 ? 'Max 3 pinned' : 'Pin to top')}>
+                              {item.starred ? '⭐' : '☆'}
+                            </button>
                             <span className="text-xl">{wishlistStatusConfig[item.status]?.icon}</span>
-                            <span className="text-xs font-mono text-gray-400">{item.id}</span>
+                            <span className={`text-xs font-mono ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{item.id}</span>
                             <span className={`px-2 py-0.5 rounded-full text-xs ${wishlistStatusConfig[item.status]?.color}`}>{wishlistStatusConfig[item.status]?.label}</span>
                           </div>
-                          <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500">
+                          <h3 className={`font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>{item.name}</h3>
+                          <div className={`flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                             {item.priceRange && <span>💰 {item.priceRange}</span>}
                             {item.source && <span>🏷️ {item.source}</span>}
                           </div>
-                          {item.notes && <p className="text-xs text-gray-500 mt-1 italic">{item.notes}</p>}
-                          <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+                          {item.notes && <p className={`text-xs mt-1 italic ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{item.notes}</p>}
+                          <div className={`flex gap-2 mt-2 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
                             <button onClick={() => { setEditingWishlistId(item.id); setEditWishlistData({...item}); }} className="px-2 py-1 text-xs text-emerald-600">✏️ Edit</button>
                             <button onClick={() => { setCompareSlot1({...item, type: 'wishlist'}); setActiveTab('compare'); }} className="px-2 py-1 text-xs text-violet-600">⚖️</button>
                             <button onClick={() => moveToCollection(item)} className="px-2 py-1 text-xs text-sky-600">🏡 Got it!</button>
@@ -394,7 +446,7 @@
                     </div>
                   ))}
                 </div>
-                {filteredWishlist.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl">No wishlist items</div>}
+                {filteredWishlist.length === 0 && <div className={`text-center py-8 rounded-xl ${darkMode ? 'text-gray-400 bg-gray-800' : 'text-gray-500 bg-white'}`}>No wishlist items</div>}
               </>
             )}
           </div>
