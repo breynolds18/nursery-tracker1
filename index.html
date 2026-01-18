@@ -142,6 +142,20 @@
       };
       const counts = getCounts();
 
+      const sortItems = (items, sortType, isWishlist = false) => {
+        const sorted = [...items];
+        if (sortType === 'alphabetical') {
+          sorted.sort((a, b) => a.name.localeCompare(b.name));
+        } else if (sortType === 'newest') {
+          sorted.reverse();
+        }
+        // For wishlist, always pin starred items to the top
+        if (isWishlist) {
+          sorted.sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
+        }
+        return sorted;
+      };
+
       const filteredPlants = sortItems(plants.filter(p => categoryFilter === 'all' || p.category === categoryFilter).filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.variegation.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase())), collectionSort);
       const filteredWishlist = sortItems(wishlist.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())), wishlistSort, true);
       const allPlantsForCompare = [...plants.map(p => ({ ...p, type: 'collection' })), ...wishlist.map(w => ({ ...w, type: 'wishlist' }))].filter(p => p.name.toLowerCase().includes(compareSearch.toLowerCase()));
@@ -165,20 +179,6 @@
         } else if (starredCount < 3) {
           setWishlist(wishlist.map(w => w.id === id ? { ...w, starred: true } : w));
         }
-      };
-
-      const sortItems = (items, sortType, isWishlist = false) => {
-        const sorted = [...items];
-        if (sortType === 'alphabetical') {
-          sorted.sort((a, b) => a.name.localeCompare(b.name));
-        } else if (sortType === 'newest') {
-          sorted.reverse();
-        }
-        // For wishlist, always pin starred items to the top
-        if (isWishlist) {
-          sorted.sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
-        }
-        return sorted;
       };
 
       const starredCount = wishlist.filter(w => w.starred).length;
