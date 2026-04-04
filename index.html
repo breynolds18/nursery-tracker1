@@ -1,1 +1,708 @@
-test
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0f1a0f" />
+  <title>Brandon's Nursery — Variegated Philodendron Collection</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { background: #0f1a0f; font-family: 'DM Sans', sans-serif; }
+    input:focus, select:focus, textarea:focus { border-color: #3a5a3a !important; outline: none; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0f1a0f; }
+    ::-webkit-scrollbar-thumb { background: #2a3d2a; border-radius: 2px; }
+    .card-hover:active { transform: scale(0.98); }
+    .btn-hover:active { opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ─── DATA SCHEMA CONSTANTS ───
+const CONDITIONS = ["excellent","healthy","fair","stressed","critical","recovering"];
+const GROWTH_STAGES = ["established","rooting","rehabbing","dormant","juvenile"];
+const PLANT_TYPES = ["mother","cutting","candidate","active","rehab","fresh"];
+const MEDIUMS = ["LECA","soil","water","perlite","sphagnum","other"];
+const SALE_STATUSES = ["not_for_sale","available","listed","sold","trade_only"];
+const VAR_TYPES = ["sectoral","half_moon","marble","sport","chimeral","splash","aurea","albo","mint","tricolor","unknown",""];
+const VAR_STABILITY = ["stable","increasing","decreasing","variable","unknown"];
+const WISHLIST_STATUSES = ["wanted","rehab","sourcing","ordered"];
+const SORT_OPTIONS = [{v:"oldest",l:"Oldest"},{v:"newest",l:"Newest"},{v:"alphabetical",l:"A→Z"}];
+
+// ─── THEME ───
+const conditionColor = c => ({excellent:"#4ade80",healthy:"#86efac",fair:"#fbbf24",stressed:"#f97316",critical:"#ef4444",recovering:"#38bdf8"}[c]||"#9ca3af");
+const conditionEmoji = c => ({excellent:"✨",healthy:"🌿",fair:"🌤",stressed:"⚠️",critical:"🚨",recovering:"💧"}[c]||"❓");
+const typeConfig = {
+  mother:{label:"Mother",color:"#fbbf24",icon:"👑"},
+  cutting:{label:"Cutting",color:"#c084fc",icon:"✂️"},
+  candidate:{label:"Candidate",color:"#a78bfa",icon:"⭐"},
+  active:{label:"Active",color:"#4ade80",icon:"🌿"},
+  rehab:{label:"Rehab",color:"#f97316",icon:"🩹"},
+  fresh:{label:"Fresh",color:"#38bdf8",icon:"🌱"},
+};
+const wishlistStatusConfig = {
+  wanted:{label:"Wanted",color:"#4ade80",icon:"🎯"},
+  rehab:{label:"In Rehab",color:"#fbbf24",icon:"⚠️"},
+  sourcing:{label:"Sourcing",color:"#38bdf8",icon:"🔍"},
+  ordered:{label:"Ordered",color:"#c084fc",icon:"📦"},
+};
+const fmt = s => s?.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase())||"—";
+
+// ─── STORAGE ───
+const CATALOG_KEY = "nursery-catalog-v2";
+const WISHLIST_KEY = "nursery-wishlist-v2";
+
+// ─── DEFAULT CATALOG DATA (merged from tracker) ───
+const DEFAULT_CATALOG = [
+  {id:"EK-001",variety:"Emerald King Variegated",variety_code:"EK",type:"active",parent_id:null,photo_description:"Large self-heading specimen with approximately 8-9 elongated cordate leaves showing heavy albo variegation in a marble pattern. Pink gradient petioles with pink concentrated near leaf base.",condition:"fair",condition_notes:"Droopy from underwatering. Minor edge browning on heavily variegated leaves.",growth_stage:"established",medium:"LECA",location:"Top tent",variegation_type:"albo",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"Brady's Plant Exchange",notes:"Large specimen for its type. Self-heading growth habit. Heavy stable albo variegation.",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"M-01",variety:"Pink Princess (2 plants in 1 pot)",variety_code:"PP",type:"mother",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"sectoral",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"Shared pot; main PPP production line",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"M-02",variety:"Strawberry Shake",variety_code:"SS",type:"mother",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"Mites treated 10/26/25",growth_stage:"established",medium:"LECA",location:"Table / thebasements",variegation_type:"marble",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"Mad Variegated Foliage",notes:"Primary Strawberry Shake line. 10 leaves.",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"M-03",variety:"Caramel Marble (A)",variety_code:"CM",type:"mother",parent_id:null,photo_description:"",condition:"recovering",condition_notes:"Recently chopped; regrowing for future cuts",growth_stage:"rehabbing",medium:"LECA",location:"",variegation_type:"marble",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"injungles",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"M-04",variety:"Caramel Marble (B)",variety_code:"CM",type:"mother",parent_id:null,photo_description:"",condition:"recovering",condition_notes:"Second Caramel Marble line; also just chopped",growth_stage:"rehabbing",medium:"LECA",location:"",variegation_type:"marble",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"injungles",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"C-01",variety:"Orange Princess (A)",variety_code:"OP",type:"candidate",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"aurea",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"Established/Growing",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"C-02",variety:"Orange Princess (B)",variety_code:"OP",type:"candidate",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"aurea",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"C-03",variety:"Scarlett Princess",variety_code:"SP",type:"candidate",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"sectoral",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"Established/Growing",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"C-04",variety:"Green Congo True",variety_code:"GC",type:"candidate",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"sectoral",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"Established/Growing",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-01",variety:"Princess of Fire",variety_code:"PF",type:"active",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"Orange Lake Nursery",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-05",variety:"Tortum x Florida Beauty",variety_code:"TFB",type:"active",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"albo",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"Established/Growing",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-09",variety:"Gloriosum (A)",variety_code:"GL",type:"active",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"Top tent",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-10",variety:"Gloriosum (B)",variety_code:"GL",type:"active",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"Table",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-11",variety:"Red Anderson",variety_code:"RA",type:"active",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-20",variety:"Red Congo (A)",variety_code:"RC",type:"active",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-22",variety:"Yellow Congo (A)",variety_code:"YC",type:"active",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"aurea",variegation_stability:"stable",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"Established/Growing",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-25",variety:"Ismaelli",variety_code:"IS",type:"active",parent_id:null,photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-02",variety:"Emerald Queen (A)",variety_code:"EQ",type:"rehab",parent_id:null,photo_description:"",condition:"stressed",condition_notes:"",growth_stage:"rehabbing",medium:"LECA",location:"Table",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-03",variety:"Emerald Queen (B)",variety_code:"EQ",type:"rehab",parent_id:null,photo_description:"",condition:"stressed",condition_notes:"",growth_stage:"rehabbing",medium:"LECA",location:"",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"RPF",notes:"Established/Growing",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-04a",variety:"Emerald Queen (C)",variety_code:"EQ",type:"rehab",parent_id:null,photo_description:"",condition:"stressed",condition_notes:"",growth_stage:"rehabbing",medium:"LECA",location:"Downstairs",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-04b",variety:"Emerald Ice",variety_code:"EI",type:"rehab",parent_id:null,photo_description:"",condition:"stressed",condition_notes:"",growth_stage:"rehabbing",medium:"LECA",location:"",variegation_type:"albo",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"thebasements",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-07",variety:"Pink Princess Mutation",variety_code:"PPM",type:"rehab",parent_id:null,photo_description:"",condition:"stressed",condition_notes:"",growth_stage:"rehabbing",medium:"LECA",location:"Bottom tent",variegation_type:"sectoral",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"thebasements",notes:"pink/black/outer variegation pattern",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-08",variety:"Princess of Fire (B)",variety_code:"PF",type:"rehab",parent_id:null,photo_description:"",condition:"stressed",condition_notes:"",growth_stage:"rehabbing",medium:"LECA",location:"",variegation_type:"aurea",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"scarlet/orange/purple/red variegation",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-12",variety:"Silver Sword",variety_code:"SVS",type:"rehab",parent_id:null,photo_description:"",condition:"stressed",condition_notes:"",growth_stage:"rehabbing",medium:"LECA",location:"Top tent",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-13",variety:"Heartleaf hederaceum",variety_code:"HH",type:"rehab",parent_id:null,photo_description:"",condition:"recovering",condition_notes:"Half leaf",growth_stage:"rooting",medium:"LECA",location:"Mini prop",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-15",variety:"Albo/Pink Micans",variety_code:"APM",type:"rehab",parent_id:null,photo_description:"",condition:"recovering",condition_notes:"",growth_stage:"rooting",medium:"LECA",location:"",variegation_type:"albo",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"Sprouting",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-17",variety:"Caramel Marble Fire Tiger",variety_code:"CMFT",type:"rehab",parent_id:null,photo_description:"",condition:"stressed",condition_notes:"",growth_stage:"rehabbing",medium:"LECA",location:"",variegation_type:"marble",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-26",variety:"Persimmon Princess",variety_code:"PEP",type:"rehab",parent_id:null,photo_description:"",condition:"stressed",condition_notes:"",growth_stage:"rehabbing",medium:"LECA",location:"",variegation_type:"aurea",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-27",variety:"Pink Princess Galaxy",variety_code:"PPG",type:"rehab",parent_id:null,photo_description:"",condition:"stressed",condition_notes:"",growth_stage:"rehabbing",medium:"LECA",location:"",variegation_type:"splash",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"thebasements",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-18",variety:"Squamiferum",variety_code:"SQ",type:"fresh",parent_id:null,photo_description:"",condition:"fair",condition_notes:"",growth_stage:"rooting",medium:"LECA",location:"",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-19",variety:"Florida Beauty",variety_code:"FB",type:"fresh",parent_id:null,photo_description:"",condition:"fair",condition_notes:"",growth_stage:"rooting",medium:"LECA",location:"",variegation_type:"albo",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-21",variety:"Red Congo (B)",variety_code:"RC",type:"fresh",parent_id:null,photo_description:"",condition:"fair",condition_notes:"",growth_stage:"rooting",medium:"LECA",location:"",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-23",variety:"Yellow Congo (B)",variety_code:"YC",type:"fresh",parent_id:null,photo_description:"",condition:"fair",condition_notes:"",growth_stage:"rooting",medium:"LECA",location:"",variegation_type:"aurea",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-24",variety:"White Princess Aurea",variety_code:"WPA",type:"fresh",parent_id:null,photo_description:"",condition:"fair",condition_notes:"",growth_stage:"rooting",medium:"LECA",location:"",variegation_type:"aurea",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"",notes:"",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-28",variety:"Pandiferum",variety_code:"PD",type:"fresh",parent_id:null,photo_description:"",condition:"fair",condition_notes:"",growth_stage:"rooting",medium:"LECA",location:"",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"thebasements",notes:"Fresh, Active",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+  {id:"P-29",variety:"Billietiae",variety_code:"BL",type:"fresh",parent_id:null,photo_description:"",condition:"fair",condition_notes:"",growth_stage:"rooting",medium:"LECA",location:"",variegation_type:"",variegation_stability:"unknown",price_paid:null,estimated_value:null,sale_status:"not_for_sale",sale_price:null,date_acquired:null,source:"thebasements",notes:"Fresh, Active",date_cataloged:"2026-03-31",last_updated:"2026-03-31"},
+];
+
+const DEFAULT_WISHLIST = [
+  {id:"W-01",name:"Brown Beauty",status:"rehab",notes:"Cutting in rehab",priceRange:"",source:"",starred:false},
+  {id:"W-02",name:"Olympiad",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-03",name:"Yellow Flame",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-04",name:"Tortum",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-05",name:"Albo Tortum",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-06",name:"Melinonii",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-07",name:"Moonlight",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-08",name:"Whipple Way",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-09",name:"Imperial Red",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-10",name:"Jennifer",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-11",name:"Albo Billie",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-12",name:"Orange Melano",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-13",name:"Golden Dragon",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-14",name:"Atabapoense Pink",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-15",name:"Black Cardinal",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-16",name:"White Wizard Aurea",status:"rehab",notes:"Cutting in rehab",priceRange:"",source:"",starred:false},
+  {id:"W-17",name:"White Knight Aurea",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+  {id:"W-18",name:"White Knight Quad Color (Skittlez)",status:"wanted",notes:"",priceRange:"",source:"",starred:false},
+];
+
+// ─── STYLES ───
+const S = {
+  app:{fontFamily:"'Newsreader',Georgia,serif",background:"#0f1a0f",color:"#e8e4dc",minHeight:"100vh",maxWidth:520,margin:"0 auto",position:"relative",paddingBottom:72},
+  header:{background:"linear-gradient(180deg,#1a2e1a 0%,#0f1a0f 100%)",padding:"18px 20px 14px",borderBottom:"1px solid #2a3d2a",position:"sticky",top:0,zIndex:50},
+  title:{fontSize:22,fontWeight:700,color:"#c8e6c0",letterSpacing:"0.02em",margin:0,fontFamily:"'Newsreader',Georgia,serif"},
+  subtitle:{fontSize:11,color:"#7a9a70",letterSpacing:"0.12em",textTransform:"uppercase",marginTop:2,fontFamily:"'DM Sans',sans-serif"},
+  nav:{display:"flex",gap:0,background:"#162016",borderBottom:"1px solid #2a3d2a",position:"sticky",top:66,zIndex:49},
+  navBtn:(a)=>({flex:1,padding:"11px 6px",background:a?"#1a3a1a":"transparent",color:a?"#8fce82":"#6b8a60",border:"none",borderBottom:a?"2px solid #8fce82":"2px solid transparent",fontSize:12,fontFamily:"'DM Sans',sans-serif",fontWeight:a?600:400,cursor:"pointer",letterSpacing:"0.01em"}),
+  section:{padding:"16px 20px"},
+  card:{background:"linear-gradient(135deg,#1a2a1a 0%,#1e2e1a 100%)",borderRadius:12,padding:14,marginBottom:10,border:"1px solid #2a3d2a",cursor:"pointer",transition:"transform 0.15s"},
+  cardId:{fontSize:11,color:"#8fce82",fontFamily:"'DM Mono',monospace",fontWeight:500,letterSpacing:"0.05em"},
+  cardName:{fontSize:16,fontWeight:600,color:"#e8e4dc",marginTop:3,lineHeight:1.3,fontFamily:"'Newsreader',Georgia,serif"},
+  badge:(color)=>({display:"inline-block",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:500,background:color+"18",color,fontFamily:"'DM Sans',sans-serif",marginRight:5,marginTop:5}),
+  statBox:{background:"linear-gradient(135deg,#1a2a1a 0%,#1e2e1a 100%)",borderRadius:12,padding:14,border:"1px solid #2a3d2a",textAlign:"center"},
+  statNum:{fontSize:26,fontWeight:700,color:"#8fce82",lineHeight:1,fontFamily:"'DM Mono',monospace"},
+  statLabel:{fontSize:10,color:"#7a9a70",marginTop:4,fontFamily:"'DM Sans',sans-serif",textTransform:"uppercase",letterSpacing:"0.08em"},
+  input:{width:"100%",padding:"10px 12px",background:"#0f1a0f",border:"1px solid #2a3d2a",borderRadius:8,color:"#e8e4dc",fontSize:14,fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box"},
+  select:{width:"100%",padding:"10px 12px",background:"#0f1a0f",border:"1px solid #2a3d2a",borderRadius:8,color:"#e8e4dc",fontSize:14,fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box",appearance:"auto"},
+  textarea:{width:"100%",padding:"10px 12px",background:"#0f1a0f",border:"1px solid #2a3d2a",borderRadius:8,color:"#e8e4dc",fontSize:14,fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box",resize:"vertical",minHeight:70},
+  label:{fontSize:10,color:"#7a9a70",fontFamily:"'DM Sans',sans-serif",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3,display:"block"},
+  btnP:{background:"linear-gradient(135deg,#2d5a2d 0%,#1a3a1a 100%)",color:"#8fce82",border:"1px solid #3a5a3a",borderRadius:10,padding:"11px 18px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",width:"100%"},
+  btnS:{background:"transparent",color:"#7a9a70",border:"1px solid #2a3d2a",borderRadius:10,padding:"11px 18px",fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",width:"100%"},
+  btnD:{background:"transparent",color:"#ef4444",border:"1px solid #3a2020",borderRadius:10,padding:"11px 18px",fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",width:"100%"},
+  toast:{position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#2d5a2d",color:"#c8e6c0",padding:"10px 24px",borderRadius:20,fontSize:13,fontFamily:"'DM Sans',sans-serif",fontWeight:500,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,0.4)",animation:"fadeIn 0.2s",whiteSpace:"nowrap"},
+  backBtn:{background:"none",border:"none",color:"#8fce82",fontSize:14,cursor:"pointer",padding:"0 0 12px",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:4},
+};
+
+// ─── HELPERS ───
+const Field = ({label,children}) => <div style={{marginBottom:12}}><label style={S.label}>{label}</label>{children}</div>;
+const DetailRow = ({label,value,color}) => (
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #1a2a1a"}}>
+    <span style={{fontSize:12,color:"#7a9a70",fontFamily:"'DM Sans',sans-serif"}}>{label}</span>
+    <span style={{fontSize:13,color:color||"#e8e4dc",fontWeight:500,textAlign:"right",maxWidth:"60%"}}>{value||"—"}</span>
+  </div>
+);
+
+const sortItems = (items, sortType, nameKey="variety") => {
+  const sorted = [...items];
+  if(sortType==="alphabetical") sorted.sort((a,b)=>(a[nameKey]||"").localeCompare(b[nameKey]||""));
+  else if(sortType==="newest") sorted.reverse();
+  return sorted;
+};
+
+// ═══════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════
+function App() {
+  const [catalog,setCatalog] = useState([]);
+  const [wishlist,setWishlist] = useState([]);
+  const [loaded,setLoaded] = useState(false);
+  const [view,setView] = useState("dashboard");
+  const [toast,setToast] = useState(null);
+
+  // Catalog state
+  const [selectedPlant,setSelectedPlant] = useState(null);
+  const [editing,setEditing] = useState(false);
+  const [editForm,setEditForm] = useState({});
+  const [adding,setAdding] = useState(false);
+  const [addForm,setAddForm] = useState({});
+  const [searchQuery,setSearchQuery] = useState("");
+  const [filterType,setFilterType] = useState("all");
+  const [filterCondition,setFilterCondition] = useState("all");
+  const [catalogSort,setCatalogSort] = useState("oldest");
+
+  // Wishlist state
+  const [wishlistSearch,setWishlistSearch] = useState("");
+  const [wishlistSort,setWishlistSort] = useState("oldest");
+  const [showWishAdd,setShowWishAdd] = useState(false);
+  const [newWish,setNewWish] = useState({name:"",status:"wanted",notes:"",priceRange:"",source:""});
+  const [editingWishId,setEditingWishId] = useState(null);
+  const [editWishData,setEditWishData] = useState({});
+
+  // Compare state
+  const [slot1,setSlot1] = useState(null);
+  const [slot2,setSlot2] = useState(null);
+  const [compareSearch,setCompareSearch] = useState("");
+
+  // Import
+  const [showImport,setShowImport] = useState(false);
+  const [importText,setImportText] = useState("");
+  const fileRef = useRef(null);
+
+  // ─── Load ───
+  useEffect(()=>{
+    try {
+      const sc = localStorage.getItem(CATALOG_KEY);
+      const sw = localStorage.getItem(WISHLIST_KEY);
+      setCatalog(sc ? JSON.parse(sc) : DEFAULT_CATALOG);
+      setWishlist(sw ? JSON.parse(sw) : DEFAULT_WISHLIST);
+    } catch(e) {
+      setCatalog(DEFAULT_CATALOG);
+      setWishlist(DEFAULT_WISHLIST);
+    }
+    setLoaded(true);
+  },[]);
+
+  // ─── Save ───
+  useEffect(()=>{ if(loaded) try{localStorage.setItem(CATALOG_KEY,JSON.stringify(catalog))}catch(e){} },[catalog,loaded]);
+  useEffect(()=>{ if(loaded) try{localStorage.setItem(WISHLIST_KEY,JSON.stringify(wishlist))}catch(e){} },[wishlist,loaded]);
+
+  const notify = msg => { setToast(msg); setTimeout(()=>setToast(null),2200); };
+
+  // ─── Stats ───
+  const stats = {
+    total:catalog.length,
+    mothers:catalog.filter(p=>p.type==="mother").length,
+    candidates:catalog.filter(p=>p.type==="candidate").length,
+    active:catalog.filter(p=>p.type==="active").length,
+    rehab:catalog.filter(p=>["rehab"].includes(p.type)||["stressed","critical"].includes(p.condition)).length,
+    fresh:catalog.filter(p=>p.type==="fresh").length,
+    cuttings:catalog.filter(p=>p.type==="cutting").length,
+    varieties:[...new Set(catalog.map(p=>p.variety_code))].length,
+    wishlistCount:wishlist.length,
+  };
+
+  // ─── Catalog filtering ───
+  const filteredCatalog = sortItems(
+    catalog.filter(p=>{
+      const q=searchQuery.toLowerCase();
+      const matchSearch=!q||p.id.toLowerCase().includes(q)||p.variety.toLowerCase().includes(q)||(p.notes||"").toLowerCase().includes(q)||(p.variety_code||"").toLowerCase().includes(q);
+      const matchType=filterType==="all"||p.type===filterType;
+      const matchCond=filterCondition==="all"||p.condition===filterCondition;
+      return matchSearch&&matchType&&matchCond;
+    }),catalogSort,"variety"
+  );
+
+  // ─── Wishlist filtering ───
+  const starredCount = wishlist.filter(w=>w.starred).length;
+  const filteredWishlist = (() => {
+    let items = wishlist.filter(w=>w.name.toLowerCase().includes(wishlistSearch.toLowerCase()));
+    items = sortItems(items,wishlistSort,"name");
+    items.sort((a,b)=>(b.starred?1:0)-(a.starred?1:0));
+    return items;
+  })();
+
+  // ─── Compare list ───
+  const allForCompare = [...catalog.map(p=>({...p,_type:"catalog",_name:p.variety})),...wishlist.map(w=>({...w,_type:"wishlist",_name:w.name}))].filter(p=>p._name.toLowerCase().includes(compareSearch.toLowerCase()));
+
+  // ─── Catalog CRUD ───
+  const blankPlant = () => ({id:"",variety:"",variety_code:"",type:"active",parent_id:"",photo_description:"",condition:"healthy",condition_notes:"",growth_stage:"established",medium:"LECA",location:"apartment",variegation_type:"unknown",variegation_stability:"unknown",price_paid:"",estimated_value:"",sale_status:"not_for_sale",sale_price:"",date_acquired:new Date().toISOString().split("T")[0],source:"",notes:"",date_cataloged:new Date().toISOString().split("T")[0],last_updated:new Date().toISOString().split("T")[0]});
+
+  const saveNewPlant = () => {
+    if(!addForm.id||!addForm.variety){notify("ID and variety required");return;}
+    if(catalog.find(p=>p.id===addForm.id)){notify("ID already exists");return;}
+    setCatalog(prev=>[...prev,{...addForm,price_paid:addForm.price_paid?Number(addForm.price_paid):null,estimated_value:addForm.estimated_value?Number(addForm.estimated_value):null,sale_price:addForm.sale_price?Number(addForm.sale_price):null}]);
+    setAdding(false);setAddForm({});notify("Plant added 🌱");
+  };
+
+  const saveEdit = () => {
+    setCatalog(prev=>prev.map(p=>p.id===selectedPlant.id?{...p,...editForm,last_updated:new Date().toISOString().split("T")[0]}:p));
+    setSelectedPlant({...selectedPlant,...editForm});setEditing(false);notify("Updated ✨");
+  };
+
+  const deletePlant = id => {
+    setCatalog(prev=>prev.filter(p=>p.id!==id));setSelectedPlant(null);setView("catalog");notify("Removed");
+  };
+
+  // ─── Wishlist CRUD ───
+  const genWishId = () => {const ids=wishlist.map(w=>{const m=w.id.match(/W-(\d+)/);return m?parseInt(m[1]):0;});return `W-${String(Math.max(...ids,0)+1).padStart(2,"0")}`;};
+
+  const addWishItem = () => {
+    if(!newWish.name.trim())return;
+    setWishlist(prev=>[...prev,{...newWish,id:genWishId(),starred:false}]);
+    setNewWish({name:"",status:"wanted",notes:"",priceRange:"",source:""});setShowWishAdd(false);notify("Added to wishlist 🎯");
+  };
+
+  const saveWishEdit = () => {setWishlist(prev=>prev.map(w=>w.id===editingWishId?{...editWishData}:w));setEditingWishId(null);notify("Updated");};
+  const removeWish = id => {setWishlist(prev=>prev.filter(w=>w.id!==id));notify("Removed");};
+
+  const toggleStar = id => {
+    const item=wishlist.find(w=>w.id===id);
+    if(item.starred){setWishlist(prev=>prev.map(w=>w.id===id?{...w,starred:false}:w));}
+    else if(starredCount<3){setWishlist(prev=>prev.map(w=>w.id===id?{...w,starred:true}:w));}
+  };
+
+  const moveToCollection = item => {
+    const newId = (() => {const ids=catalog.map(p=>{const m=p.id.match(/P-(\d+)/);return m?parseInt(m[1]):0;});return `P-${String(Math.max(...ids,0)+1).padStart(2,"0")}`;})();
+    setCatalog(prev=>[...prev,{...blankPlant(),id:newId,variety:item.name,type:"fresh",condition:"fair",growth_stage:"rooting",source:item.source||"",notes:item.notes||"",date_cataloged:new Date().toISOString().split("T")[0],last_updated:new Date().toISOString().split("T")[0]}]);
+    setWishlist(prev=>prev.filter(w=>w.id!==item.id));notify(`${item.name} added to collection! 🏡`);
+  };
+
+  // ─── Import/Export ───
+  const handleExport = () => {
+    const data={catalog,wishlist,exportDate:new Date().toISOString()};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");
+    a.href=url;a.download=`nursery-backup-${new Date().toISOString().split("T")[0]}.json`;a.click();
+    URL.revokeObjectURL(url);notify("Exported 📤");
+  };
+
+  const handleImport = () => {
+    try{
+      const data=JSON.parse(importText);
+      if(data.catalog){setCatalog(data.catalog);if(data.wishlist)setWishlist(data.wishlist);notify(`Imported ${data.catalog.length} plants`);}
+      else if(Array.isArray(data)){setCatalog(data);notify(`Imported ${data.length} plants`);}
+      setShowImport(false);setImportText("");
+    }catch{notify("Invalid JSON");}
+  };
+
+  const handleFileImport = e => {
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{try{const data=JSON.parse(ev.target.result);if(data.catalog){setCatalog(data.catalog);if(data.wishlist)setWishlist(data.wishlist);notify(`Imported!`);}else if(Array.isArray(data)){setCatalog(data);notify(`Imported ${data.length} plants`);}setShowImport(false);}catch{notify("Invalid file");}};
+    reader.readAsText(file);
+  };
+
+  // ─── Navigation helper ───
+  const goTo = (v) => { setView(v); setSearchQuery(""); setWishlistSearch(""); };
+  const isDetailView = view==="detail"||editing||adding;
+
+  // ═══════════════════════════════════════
+  // RENDER: DASHBOARD
+  // ═══════════════════════════════════════
+  const Dashboard = () => (
+    <div style={S.section}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18}}>
+        <div style={{...S.statBox,gridColumn:"1/-1",background:"linear-gradient(135deg,#1a3a1a 0%,#0f2a1a 100%)",border:"1px solid #3a5a3a"}}>
+          <div style={{...S.statNum,fontSize:38}}>{stats.total}</div>
+          <div style={S.statLabel}>Total Plants</div>
+        </div>
+        <div style={S.statBox}><div style={S.statNum}>{stats.varieties}</div><div style={S.statLabel}>Varieties</div></div>
+        <div style={S.statBox}><div style={S.statNum}>{stats.mothers}</div><div style={S.statLabel}>Mothers</div></div>
+        <div style={S.statBox}><div style={S.statNum}>{stats.candidates}</div><div style={S.statLabel}>Candidates</div></div>
+        <div style={S.statBox}><div style={{...S.statNum,color:stats.rehab>0?"#f97316":"#8fce82"}}>{stats.rehab}</div><div style={S.statLabel}>Need Attention</div></div>
+        <div style={S.statBox}><div style={{...S.statNum,color:"#38bdf8"}}>{stats.fresh}</div><div style={S.statLabel}>Fresh Cuts</div></div>
+        <div style={S.statBox}><div style={{...S.statNum,color:"#c084fc"}}>{stats.wishlistCount}</div><div style={S.statLabel}>Wishlist</div></div>
+      </div>
+
+      <h3 style={{fontSize:13,color:"#7a9a70",fontFamily:"'DM Sans',sans-serif",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Condition Breakdown</h3>
+      <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:20}}>
+        {CONDITIONS.map(c=>{
+          const count=catalog.filter(p=>p.condition===c).length;
+          if(!count)return null;
+          const pct=(count/catalog.length)*100;
+          return(
+            <div key={c} style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:11,color:"#7a9a70",width:75,fontFamily:"'DM Sans',sans-serif",textTransform:"capitalize"}}>{c}</span>
+              <div style={{flex:1,height:7,background:"#0f1a0f",borderRadius:4,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${pct}%`,background:conditionColor(c),borderRadius:4,transition:"width 0.5s"}}/>
+              </div>
+              <span style={{fontSize:11,color:conditionColor(c),width:22,textAlign:"right",fontFamily:"'DM Mono',monospace"}}>{count}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{display:"flex",gap:10}}>
+        <button style={{...S.btnP,flex:1}} className="btn-hover" onClick={()=>{goTo("catalog");setAdding(true);setAddForm(blankPlant());}}>+ Add Plant</button>
+        <button style={{...S.btnS,flex:1}} className="btn-hover" onClick={handleExport}>📤 Export</button>
+      </div>
+      <button style={{...S.btnS,marginTop:10}} className="btn-hover" onClick={()=>setShowImport(true)}>📥 Import</button>
+    </div>
+  );
+
+  // ═══════════════════════════════════════
+  // RENDER: CATALOG LIST
+  // ═══════════════════════════════════════
+  const CatalogList = () => (
+    <div style={S.section}>
+      <div style={{display:"flex",gap:8,marginBottom:10}}>
+        <input style={{...S.input,flex:1,fontSize:13}} placeholder="Search ID, variety, notes..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} />
+        <select style={{...S.select,width:"auto",padding:"8px 10px",fontSize:12}} value={catalogSort} onChange={e=>setCatalogSort(e.target.value)}>
+          {SORT_OPTIONS.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
+        </select>
+      </div>
+      <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>
+        {["all",...Object.keys(typeConfig)].map(t=>{
+          const count=t==="all"?catalog.length:catalog.filter(p=>p.type===t).length;
+          const active=filterType===t;
+          return <button key={t} onClick={()=>setFilterType(t)} style={{padding:"5px 10px",borderRadius:16,fontSize:11,fontWeight:active?600:400,border:active?"1px solid #3a5a3a":"1px solid #2a3d2a",background:active?"#1a3a1a":"transparent",color:active?"#8fce82":"#6b8a60",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
+            {t==="all"?`All (${count})`:`${typeConfig[t].icon} ${count}`}
+          </button>;
+        })}
+      </div>
+      <div style={{fontSize:11,color:"#4a6a40",marginBottom:8,fontFamily:"'DM Sans',sans-serif"}}>{filteredCatalog.length} plant{filteredCatalog.length!==1?"s":""}</div>
+      {filteredCatalog.map(p=>(
+        <div key={p.id} style={S.card} className="card-hover" onClick={()=>{setSelectedPlant(p);setView("detail");}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={S.cardId}>{p.id}</div>
+              <div style={S.cardName}>{p.variety}</div>
+            </div>
+            <span style={{fontSize:18}}>{conditionEmoji(p.condition)}</span>
+          </div>
+          <div style={{marginTop:3}}>
+            <span style={S.badge(typeConfig[p.type]?.color||"#9ca3af")}>{typeConfig[p.type]?.icon} {typeConfig[p.type]?.label||fmt(p.type)}</span>
+            <span style={S.badge(conditionColor(p.condition))}>{fmt(p.condition)}</span>
+            <span style={S.badge("#7ab8d4")}>{p.medium}</span>
+            {p.variegation_type&&p.variegation_type!=="unknown"&&p.variegation_type!==""&&<span style={S.badge("#c8a8e8")}>{fmt(p.variegation_type)}</span>}
+          </div>
+          {p.condition_notes&&<div style={{fontSize:11,color:"#7a9a70",marginTop:6,fontStyle:"italic"}}>{p.condition_notes}</div>}
+        </div>
+      ))}
+      <button style={{...S.btnP,marginTop:8}} className="btn-hover" onClick={()=>{setAdding(true);setAddForm(blankPlant());}}>+ Add Plant</button>
+    </div>
+  );
+
+  // ═══════════════════════════════════════
+  // RENDER: PLANT FORM (Add/Edit)
+  // ═══════════════════════════════════════
+  const PlantForm = ({form,setForm,onSave,onCancel,title}) => (
+    <div style={S.section}>
+      <h2 style={{fontSize:18,color:"#c8e6c0",marginBottom:14,fontFamily:"'Newsreader',Georgia,serif"}}>{title}</h2>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <Field label="Plant ID *"><input style={S.input} value={form.id||""} onChange={e=>setForm({...form,id:e.target.value.toUpperCase()})} placeholder="e.g. RC-001"/></Field>
+        <Field label="Variety Code"><input style={S.input} value={form.variety_code||""} onChange={e=>setForm({...form,variety_code:e.target.value.toUpperCase()})} placeholder="e.g. RC"/></Field>
+      </div>
+      <Field label="Variety Name *"><input style={S.input} value={form.variety||""} onChange={e=>setForm({...form,variety:e.target.value})} placeholder="e.g. Red Congo Variegated"/></Field>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <Field label="Type"><select style={S.select} value={form.type||"active"} onChange={e=>setForm({...form,type:e.target.value})}>{PLANT_TYPES.map(t=><option key={t} value={t}>{fmt(t)}</option>)}</select></Field>
+        <Field label="Condition"><select style={S.select} value={form.condition||"healthy"} onChange={e=>setForm({...form,condition:e.target.value})}>{CONDITIONS.map(c=><option key={c} value={c}>{fmt(c)}</option>)}</select></Field>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <Field label="Growth Stage"><select style={S.select} value={form.growth_stage||"established"} onChange={e=>setForm({...form,growth_stage:e.target.value})}>{GROWTH_STAGES.map(g=><option key={g} value={g}>{fmt(g)}</option>)}</select></Field>
+        <Field label="Medium"><select style={S.select} value={form.medium||"LECA"} onChange={e=>setForm({...form,medium:e.target.value})}>{MEDIUMS.map(m=><option key={m} value={m}>{m}</option>)}</select></Field>
+      </div>
+      <Field label="Location"><input style={S.input} value={form.location||""} onChange={e=>setForm({...form,location:e.target.value})} placeholder="apartment, mom's house, grow tent..."/></Field>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <Field label="Variegation Type"><select style={S.select} value={form.variegation_type||"unknown"} onChange={e=>setForm({...form,variegation_type:e.target.value})}>{VAR_TYPES.map(v=><option key={v} value={v}>{v?fmt(v):"None"}</option>)}</select></Field>
+        <Field label="Stability"><select style={S.select} value={form.variegation_stability||"unknown"} onChange={e=>setForm({...form,variegation_stability:e.target.value})}>{VAR_STABILITY.map(v=><option key={v} value={v}>{fmt(v)}</option>)}</select></Field>
+      </div>
+      <Field label="Parent Plant ID"><input style={S.input} value={form.parent_id||""} onChange={e=>setForm({...form,parent_id:e.target.value.toUpperCase()})} placeholder="e.g. M-01 (for cuttings)"/></Field>
+      <Field label="Condition Notes"><textarea style={S.textarea} value={form.condition_notes||""} onChange={e=>setForm({...form,condition_notes:e.target.value})}/></Field>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <Field label="Price Paid ($)"><input style={S.input} type="number" value={form.price_paid||""} onChange={e=>setForm({...form,price_paid:e.target.value})}/></Field>
+        <Field label="Est. Value ($)"><input style={S.input} type="number" value={form.estimated_value||""} onChange={e=>setForm({...form,estimated_value:e.target.value})}/></Field>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <Field label="Sale Status"><select style={S.select} value={form.sale_status||"not_for_sale"} onChange={e=>setForm({...form,sale_status:e.target.value})}>{SALE_STATUSES.map(s=><option key={s} value={s}>{fmt(s)}</option>)}</select></Field>
+        <Field label="Sale Price ($)"><input style={S.input} type="number" value={form.sale_price||""} onChange={e=>setForm({...form,sale_price:e.target.value})}/></Field>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <Field label="Date Acquired"><input style={S.input} type="date" value={form.date_acquired||""} onChange={e=>setForm({...form,date_acquired:e.target.value})}/></Field>
+        <Field label="Source"><input style={S.input} value={form.source||""} onChange={e=>setForm({...form,source:e.target.value})} placeholder="PalmStreet, trade..."/></Field>
+      </div>
+      <Field label="Photo Description"><textarea style={S.textarea} value={form.photo_description||""} onChange={e=>setForm({...form,photo_description:e.target.value})} placeholder="Describe what the plant looks like..."/></Field>
+      <Field label="Notes"><textarea style={S.textarea} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})}/></Field>
+      <div style={{display:"flex",gap:10,marginTop:8}}>
+        <button style={{...S.btnP,flex:1}} onClick={onSave}>Save</button>
+        <button style={{...S.btnS,flex:1}} onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+
+  // ═══════════════════════════════════════
+  // RENDER: PLANT DETAIL
+  // ═══════════════════════════════════════
+  const PlantDetail = () => {
+    if(!selectedPlant)return null;
+    const p=catalog.find(x=>x.id===selectedPlant.id)||selectedPlant;
+    const children=catalog.filter(c=>c.parent_id===p.id);
+    return(
+      <div style={S.section}>
+        <button style={S.backBtn} onClick={()=>{setView("catalog");setEditing(false);}}>← Back</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+          <div>
+            <div style={{...S.cardId,fontSize:13}}>{p.id}</div>
+            <div style={{fontSize:22,fontWeight:700,color:"#c8e6c0",lineHeight:1.2,marginTop:4,fontFamily:"'Newsreader',Georgia,serif"}}>{p.variety}</div>
+          </div>
+          <span style={{fontSize:30}}>{conditionEmoji(p.condition)}</span>
+        </div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:14}}>
+          <span style={S.badge(typeConfig[p.type]?.color||"#9ca3af")}>{typeConfig[p.type]?.icon} {typeConfig[p.type]?.label||fmt(p.type)}</span>
+          <span style={S.badge(conditionColor(p.condition))}>{fmt(p.condition)}</span>
+          <span style={S.badge("#7ab8d4")}>{fmt(p.growth_stage)}</span>
+          {p.variegation_type&&p.variegation_type!=="unknown"&&p.variegation_type!==""&&<span style={S.badge("#c8a8e8")}>{fmt(p.variegation_type)}</span>}
+        </div>
+        <div style={{background:"#0f1a0f",borderRadius:10,padding:12,marginBottom:14,border:"1px solid #1a2a1a"}}>
+          <DetailRow label="Medium" value={p.medium}/>
+          <DetailRow label="Location" value={p.location?fmt(p.location):"—"}/>
+          <DetailRow label="Variegation" value={p.variegation_type&&p.variegation_type!=="unknown"?`${fmt(p.variegation_type)} · ${fmt(p.variegation_stability)}`:"—"}/>
+          <DetailRow label="Sale Status" value={fmt(p.sale_status)}/>
+          {p.price_paid&&<DetailRow label="Price Paid" value={`$${p.price_paid}`}/>}
+          {p.estimated_value&&<DetailRow label="Est. Value" value={`$${p.estimated_value}`} color="#8fce82"/>}
+          {p.sale_price&&<DetailRow label="Sale Price" value={`$${p.sale_price}`} color="#fbbf24"/>}
+          {p.date_acquired&&<DetailRow label="Acquired" value={p.date_acquired}/>}
+          {p.source&&<DetailRow label="Source" value={p.source}/>}
+          {p.parent_id&&<DetailRow label="Parent" value={p.parent_id} color="#8fce82"/>}
+          <DetailRow label="Cataloged" value={p.date_cataloged}/>
+          <DetailRow label="Updated" value={p.last_updated}/>
+        </div>
+        {p.condition_notes&&<div style={{marginBottom:12}}><div style={S.label}>Condition Notes</div><div style={{fontSize:13,color:"#c8c4bc",fontStyle:"italic",lineHeight:1.5}}>{p.condition_notes}</div></div>}
+        {p.photo_description&&<div style={{marginBottom:12}}><div style={S.label}>Photo Description</div><div style={{fontSize:12,color:"#9a9690",lineHeight:1.6}}>{p.photo_description}</div></div>}
+        {p.notes&&<div style={{marginBottom:12}}><div style={S.label}>Notes</div><div style={{fontSize:13,color:"#c8c4bc",lineHeight:1.5}}>{p.notes}</div></div>}
+        {children.length>0&&<div style={{marginBottom:12}}><div style={S.label}>Cuttings ({children.length})</div>{children.map(c=><div key={c.id} style={{...S.card,padding:10,marginBottom:6}} onClick={()=>setSelectedPlant(c)}><span style={S.cardId}>{c.id}</span><span style={{marginLeft:8,fontSize:12,color:"#9a9690"}}>{conditionEmoji(c.condition)} {fmt(c.condition)}</span></div>)}</div>}
+        <div style={{display:"flex",gap:10,marginTop:14}}>
+          <button style={{...S.btnP,flex:1}} onClick={()=>{setEditing(true);setEditForm({...p});}}>Edit</button>
+          <button style={{...S.btnD,flex:1}} onClick={()=>{if(confirm(`Remove ${p.id}?`))deletePlant(p.id);}}>Remove</button>
+        </div>
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════
+  // RENDER: WISHLIST
+  // ═══════════════════════════════════════
+  const Wishlist = () => (
+    <div style={S.section}>
+      <div style={{display:"flex",gap:8,marginBottom:10}}>
+        <input style={{...S.input,flex:1,fontSize:13}} placeholder="Search wishlist..." value={wishlistSearch} onChange={e=>setWishlistSearch(e.target.value)} />
+        <select style={{...S.select,width:"auto",padding:"8px 10px",fontSize:12}} value={wishlistSort} onChange={e=>setWishlistSort(e.target.value)}>
+          {SORT_OPTIONS.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
+        </select>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,fontSize:12,color:"#7a9a70",fontFamily:"'DM Sans',sans-serif"}}>
+        <span>⭐ {starredCount}/3 pinned</span>
+        <span>{wishlist.length} items</span>
+      </div>
+      <button style={{...S.btnP,marginBottom:10,fontSize:12}} className="btn-hover" onClick={()=>setShowWishAdd(!showWishAdd)}>{showWishAdd?"✕ Cancel":"+ Add to Wishlist"}</button>
+      {showWishAdd&&(
+        <div style={{...S.card,cursor:"default",marginBottom:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <div style={{gridColumn:"1/-1"}}><Field label="Name *"><input style={S.input} value={newWish.name} onChange={e=>setNewWish({...newWish,name:e.target.value})} placeholder="Plant name"/></Field></div>
+            <Field label="Status"><select style={S.select} value={newWish.status} onChange={e=>setNewWish({...newWish,status:e.target.value})}>{WISHLIST_STATUSES.map(s=><option key={s} value={s}>{fmt(s)}</option>)}</select></Field>
+            <Field label="Price Range"><input style={S.input} value={newWish.priceRange} onChange={e=>setNewWish({...newWish,priceRange:e.target.value})} placeholder="$50-$100"/></Field>
+            <div style={{gridColumn:"1/-1"}}><Field label="Source"><input style={S.input} value={newWish.source} onChange={e=>setNewWish({...newWish,source:e.target.value})} placeholder="Where to find it"/></Field></div>
+            <div style={{gridColumn:"1/-1"}}><Field label="Notes"><textarea style={{...S.textarea,minHeight:50}} value={newWish.notes} onChange={e=>setNewWish({...newWish,notes:e.target.value})}/></Field></div>
+            <div style={{gridColumn:"1/-1"}}><button style={S.btnP} onClick={addWishItem}>Add</button></div>
+          </div>
+        </div>
+      )}
+      {filteredWishlist.map(item=>(
+        <div key={item.id} style={{...S.card,cursor:"default",borderColor:item.starred?"#a07d1c":"#2a3d2a",background:item.starred?"linear-gradient(135deg,#2a2a1a 0%,#2e2e1a 100%)":"linear-gradient(135deg,#1a2a1a 0%,#1e2e1a 100%)"}}>
+          {editingWishId===item.id?(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div style={{gridColumn:"1/-1"}}><Field label="Name"><input style={S.input} value={editWishData.name||""} onChange={e=>setEditWishData({...editWishData,name:e.target.value})}/></Field></div>
+              <Field label="Status"><select style={S.select} value={editWishData.status} onChange={e=>setEditWishData({...editWishData,status:e.target.value})}>{WISHLIST_STATUSES.map(s=><option key={s} value={s}>{fmt(s)}</option>)}</select></Field>
+              <Field label="Price Range"><input style={S.input} value={editWishData.priceRange||""} onChange={e=>setEditWishData({...editWishData,priceRange:e.target.value})}/></Field>
+              <div style={{gridColumn:"1/-1"}}><Field label="Source"><input style={S.input} value={editWishData.source||""} onChange={e=>setEditWishData({...editWishData,source:e.target.value})}/></Field></div>
+              <div style={{gridColumn:"1/-1"}}><Field label="Notes"><textarea style={{...S.textarea,minHeight:50}} value={editWishData.notes||""} onChange={e=>setEditWishData({...editWishData,notes:e.target.value})}/></Field></div>
+              <button style={S.btnP} onClick={saveWishEdit}>Save</button>
+              <button style={S.btnS} onClick={()=>setEditingWishId(null)}>Cancel</button>
+            </div>
+          ):(
+            <>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                <button onClick={()=>toggleStar(item.id)} style={{background:"none",border:"none",fontSize:18,cursor:item.starred||starredCount<3?"pointer":"not-allowed",padding:0,lineHeight:1,opacity:item.starred||starredCount<3?1:0.3}}>
+                  {item.starred?"⭐":"☆"}
+                </button>
+                <span style={{fontSize:16}}>{wishlistStatusConfig[item.status]?.icon}</span>
+                <span style={{...S.cardId}}>{item.id}</span>
+                <span style={{...S.badge(wishlistStatusConfig[item.status]?.color||"#9ca3af"),marginTop:0}}>{wishlistStatusConfig[item.status]?.label}</span>
+              </div>
+              <div style={{...S.cardName,marginTop:0,marginBottom:4}}>{item.name}</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8,fontSize:11,color:"#7a9a70"}}>
+                {item.priceRange&&<span>💰 {item.priceRange}</span>}
+                {item.source&&<span>🏷️ {item.source}</span>}
+              </div>
+              {item.notes&&<div style={{fontSize:11,color:"#7a9a70",marginTop:4,fontStyle:"italic"}}>{item.notes}</div>}
+              <div style={{display:"flex",gap:8,marginTop:8,paddingTop:8,borderTop:"1px solid #2a3d2a"}}>
+                <button onClick={()=>{setEditingWishId(item.id);setEditWishData({...item});}} style={{background:"none",border:"none",color:"#8fce82",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:0}}>✏️ Edit</button>
+                <button onClick={()=>{setSlot1({...item,_type:"wishlist",_name:item.name});goTo("compare");}} style={{background:"none",border:"none",color:"#c084fc",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:0}}>⚖️ Compare</button>
+                <button onClick={()=>moveToCollection(item)} style={{background:"none",border:"none",color:"#38bdf8",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:0}}>🏡 Got it!</button>
+                <button onClick={()=>removeWish(item.id)} style={{background:"none",border:"none",color:"#ef4444",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:0,marginLeft:"auto"}}>🗑️</button>
+              </div>
+            </>
+          )}
+        </div>
+      ))}
+      {filteredWishlist.length===0&&<div style={{textAlign:"center",padding:"30px 0",color:"#4a6a40",fontSize:14}}>No wishlist items</div>}
+    </div>
+  );
+
+  // ═══════════════════════════════════════
+  // RENDER: COMPARE
+  // ═══════════════════════════════════════
+  const CompareCard = ({plant,slot,onClear}) => {
+    if(!plant) return <div style={{flex:1,borderRadius:12,border:"2px dashed #2a3d2a",padding:16,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:140,background:"#0f1a0f"}}><span style={{color:"#4a6a40",fontSize:13}}>Slot {slot}</span><span style={{color:"#3a5a3a",fontSize:11}}>Select below</span></div>;
+    const isW=plant._type==="wishlist";
+    return(
+      <div style={{flex:1,borderRadius:12,padding:12,minHeight:140,background:"linear-gradient(135deg,#1a2a1a 0%,#1e2e1a 100%)",border:"1px solid #2a3d2a"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+          <span style={{...S.badge(isW?wishlistStatusConfig[plant.status]?.color||"#9ca3af":typeConfig[plant.type]?.color||"#9ca3af"),marginTop:0}}>{isW?wishlistStatusConfig[plant.status]?.label:typeConfig[plant.type]?.label}</span>
+          <button onClick={onClear} style={{background:"none",border:"none",color:"#6b8a60",cursor:"pointer",fontSize:14}}>✕</button>
+        </div>
+        <div style={{fontSize:15,fontWeight:600,color:"#e8e4dc",marginBottom:6,fontFamily:"'Newsreader',Georgia,serif"}}>{plant._name}</div>
+        <div style={{fontSize:11,color:"#9a9690",lineHeight:1.6}}>
+          {!isW&&plant.variegation_type&&plant.variegation_type!=="unknown"&&<div>Var: {fmt(plant.variegation_type)}</div>}
+          {plant.source&&<div>Source: {plant.source}</div>}
+          {!isW&&plant.location&&<div>Loc: {plant.location}</div>}
+          {!isW&&<div>Cond: {conditionEmoji(plant.condition)} {fmt(plant.condition)}</div>}
+          {!isW&&<div>Medium: {plant.medium}</div>}
+          {isW&&plant.priceRange&&<div>Price: {plant.priceRange}</div>}
+          {(plant.notes)&&<div style={{fontStyle:"italic",marginTop:4}}>{plant.notes}</div>}
+        </div>
+      </div>
+    );
+  };
+
+  const Compare = () => (
+    <div style={S.section}>
+      <div style={{display:"flex",gap:10,marginBottom:10}}>
+        <CompareCard plant={slot1} slot={1} onClear={()=>setSlot1(null)} />
+        <CompareCard plant={slot2} slot={2} onClear={()=>setSlot2(null)} />
+      </div>
+      {(slot1||slot2)&&<button style={{...S.btnS,marginBottom:12,fontSize:12}} onClick={()=>{setSlot1(null);setSlot2(null);}}>Clear Both</button>}
+      <div style={{background:"#0f1a0f",borderRadius:12,padding:12,border:"1px solid #2a3d2a"}}>
+        <input style={{...S.input,marginBottom:10,fontSize:13}} placeholder="Search plants..." value={compareSearch} onChange={e=>setCompareSearch(e.target.value)} />
+        <div style={{maxHeight:280,overflowY:"auto"}}>
+          {allForCompare.map(p=>{
+            const selected=slot1?.id===p.id||slot2?.id===p.id;
+            return(
+              <div key={`${p._type}-${p.id}`} style={{padding:"8px 10px",borderRadius:8,border:selected?"1px solid #3a5a3a":"1px solid #1a2a1a",marginBottom:4,background:selected?"#1a3a1a":"transparent",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{...S.badge(p._type==="wishlist"?"#38bdf8":typeConfig[p.type]?.color||"#9ca3af"),marginTop:0,fontSize:9}}>{p._type==="wishlist"?"🎯":typeConfig[p.type]?.icon}</span>
+                  <span style={{fontSize:13,color:"#e8e4dc",fontWeight:500}}>{p._name}</span>
+                </div>
+                <div style={{display:"flex",gap:4}}>
+                  <button onClick={()=>setSlot1(p)} style={{padding:"3px 8px",borderRadius:6,fontSize:10,border:"1px solid #2a3d2a",background:slot1?.id===p.id?"#2d5a2d":"transparent",color:slot1?.id===p.id?"#8fce82":"#6b8a60",cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>{slot1?.id===p.id?"✓1":"→1"}</button>
+                  <button onClick={()=>setSlot2(p)} style={{padding:"3px 8px",borderRadius:6,fontSize:10,border:"1px solid #2a3d2a",background:slot2?.id===p.id?"#2d5a2d":"transparent",color:slot2?.id===p.id?"#8fce82":"#6b8a60",cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>{slot2?.id===p.id?"✓2":"→2"}</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ═══════════════════════════════════════
+  // RENDER: IMPORT MODAL
+  // ═══════════════════════════════════════
+  const ImportModal = () => (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div style={{background:"#1a2a1a",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:520,maxHeight:"70vh",overflow:"auto",animation:"slideUp 0.2s"}}>
+        <h3 style={{fontSize:18,color:"#c8e6c0",marginBottom:14,fontFamily:"'Newsreader',Georgia,serif"}}>Import Data</h3>
+        <textarea style={{...S.textarea,minHeight:120}} value={importText} onChange={e=>setImportText(e.target.value)} placeholder="Paste catalog JSON here..."/>
+        <div style={{display:"flex",gap:10,marginTop:10}}>
+          <button style={{...S.btnP,flex:1}} onClick={handleImport}>Import JSON</button>
+          <button style={{...S.btnS,flex:1}} onClick={()=>fileRef.current?.click()}>Choose File</button>
+        </div>
+        <input ref={fileRef} type="file" accept=".json" style={{display:"none"}} onChange={handleFileImport} />
+        <button style={{...S.btnS,marginTop:10}} onClick={()=>{setShowImport(false);setImportText("");}}>Cancel</button>
+      </div>
+    </div>
+  );
+
+  // ═══════════════════════════════════════
+  // RENDER: MAIN
+  // ═══════════════════════════════════════
+  if(!loaded) return(
+    <div style={{...S.app,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh"}}>
+      <div style={{textAlign:"center",color:"#4a6a40"}}><div style={{fontSize:32,marginBottom:8}}>🌿</div><div style={{fontSize:12,letterSpacing:"0.1em",textTransform:"uppercase",fontFamily:"'DM Sans',sans-serif"}}>Loading nursery...</div></div>
+    </div>
+  );
+
+  return(
+    <div style={S.app}>
+      <div style={S.header}>
+        <h1 style={S.title}>🌿 Brandon's Nursery</h1>
+        <p style={S.subtitle}>{catalog.length} plants · {stats.mothers} mothers · {wishlist.length} wishlist</p>
+      </div>
+
+      {!isDetailView&&(
+        <div style={S.nav}>
+          <button style={S.navBtn(view==="dashboard")} onClick={()=>goTo("dashboard")}>Dashboard</button>
+          <button style={S.navBtn(view==="catalog")} onClick={()=>goTo("catalog")}>Catalog</button>
+          <button style={S.navBtn(view==="wishlist")} onClick={()=>goTo("wishlist")}>Wishlist</button>
+          <button style={S.navBtn(view==="compare")} onClick={()=>goTo("compare")}>Compare</button>
+        </div>
+      )}
+
+      {adding?<PlantForm form={addForm} setForm={setAddForm} onSave={saveNewPlant} onCancel={()=>setAdding(false)} title="Add New Plant"/>
+       :editing?<PlantForm form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={()=>setEditing(false)} title={`Edit ${editForm.id}`}/>
+       :view==="dashboard"?<Dashboard/>
+       :view==="catalog"?<CatalogList/>
+       :view==="detail"?<PlantDetail/>
+       :view==="wishlist"?<Wishlist/>
+       :view==="compare"?<Compare/>
+       :null}
+
+      {showImport&&<ImportModal/>}
+      {toast&&<div style={S.toast}>{toast}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+  </script>
+</body>
+</html>
